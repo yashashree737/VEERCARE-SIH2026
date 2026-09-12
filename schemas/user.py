@@ -14,3 +14,11 @@ class UserCreate(BaseModel):
     phone: str | None = None
     personnel_id: str | None = None
     unit: str | None = None
+    profile_photo: str | None = None
+
+
+class UserUpdate(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: EmailStr | None = None
+    profile_photo: str | None = None

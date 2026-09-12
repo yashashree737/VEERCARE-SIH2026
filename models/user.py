@@ -40,6 +40,11 @@ class User(Base):
         nullable=False
     )
 
+    profile_photo: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True
+    )
+
     phone: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True
