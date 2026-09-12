@@ -22,12 +22,35 @@ def create_user(
         .first()
     )
 
+    # User already exists
     if existing_user:
-        raise HTTPException(
-            status_code=409,
-            detail="User already exists"
-        )
 
+        # User is trying to log in with a different role
+        if existing_user.role != user_data.role:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "User already exists with a different role",
+                    "existing_role": existing_user.role,
+                    "requested_role": user_data.role
+                }
+            )
+
+        # User exists with the correct role
+        return {
+            "message": "User already exists",
+            "user": {
+                "id": existing_user.id,
+                "supabase_user_id": existing_user.supabase_user_id,
+                "first_name": existing_user.first_name,
+                "last_name": existing_user.last_name,
+                "email": existing_user.email,
+                "role": existing_user.role,
+                "profile_photo": existing_user.profile_photo
+            }
+        }
+
+    # Create new user
     user = User(
         supabase_user_id=user_data.supabase_user_id,
         first_name=user_data.first_name,
@@ -77,6 +100,7 @@ def update_user(
         )
 
     update_data = user_data.model_dump(exclude_unset=True)
+
     for key, value in update_data.items():
         setattr(user, key, value)
 
