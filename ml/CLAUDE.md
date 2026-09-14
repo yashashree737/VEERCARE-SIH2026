@@ -16,3 +16,32 @@
 - Added r2_score, root_mean_squared_error, and mean_absolute_error metrics for both models
 - Now all four models (welfare, pss, burnout, strain) have complete fit + predict + scoring blocks
 - Note: welfare scoring prints prediction array instead of score (line 87 — likely typo)
+
+## Session 2026-09-14 09:58
+
+- Consolidated train-test split to single call with all four targets (welfare, pss, burnout, strain) to ensure row alignment
+- Added joblib model serialization for all four models (welfare, pss, burnout, strain) plus feature column order
+- Created ml.py with predict(sample_dict) function that loads models and returns predictions for all targets
+- Verified end-to-end setup: train.py trains and saves joblib files; ml.py loads and predicts with R² scores ~89-99%
+
+## Session 2026-09-14 10:17
+
+- Refactored train-test split back to separate calls per target (welfare, pss, burnout, strain) after user feedback
+- Added model evaluation (r2_score, root_mean_squared_error, mean_absolute_error) for burnout and strain models
+- Now all four models have complete fit + predict + scoring pipeline in train.py
+- Prepared models for joblib serialization and integration with ml.py prediction interface
+
+## Session 2026-09-14 11:25
+
+- Consolidated train-test split into a single call with all four targets (welfare, pss, burnout, strain) for row alignment consistency
+- Applied the unified split pattern across all target variables with test_size=0.2 and random_state=42
+- Generated joblib model files (model_welfare.joblib, model_pss.joblib, model_burnout.joblib, model_strain.joblib) and feature_columns.joblib
+- Updated ml.py with complete predict() function loading and applying all four trained models to new samples
+
+## Session 2026-09-14 10:31
+
+- Identified and dropped 7 leaky target-derived columns from feature set to eliminate data leakage
+- Replaced row-level train-test split with person-level split using GroupShuffleSplit on personnel_id from raw data2.csv
+- Applied single unified split across all 4 models (welfare, pss, burnout, strain) to ensure no soldier appears in both train/test
+- Fixed welfare model evaluation (line 74) to print accuracy metric instead of prediction array
+- Re-dumped all joblib model files and feature_columns.joblib with corrected feature set; verified results (pss: 0.666 r², burnout: 0.718 r², strain: 0.989 r²)

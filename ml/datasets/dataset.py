@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-data=pd.read_csv("data2.csv")
+data=pd.read_csv("data.csv")
 
 data.info(verbose=True, show_counts=True)
 print(data["personnel_id"].unique())
@@ -23,6 +23,10 @@ print(data["trend_flag"].unique())
 print(data["intervention_recommended"].unique())
 data = data.drop("personnel_id",axis=1)
 data=data.drop("unit_id",axis=1)
+data=data.drop("resting_heart_rate",axis=1)
+data=data.drop("hrv_ms",axis=1)
+data=data.drop("step_count",axis=1)
+data=data.drop("mobility_radius_km",axis=1)
 
 
 
@@ -106,7 +110,7 @@ data["intervention_recommended"] = data["intervention_recommended"].map({
     'Immediate Welfare Escalation': 6,
 })
 data.info(verbose=True , show_counts=True)
-data.to_csv("cleaned_data.csv",index=False)
+data.to_csv("cleaned_data2.csv",index=False)
 
 
 data.isnull()
