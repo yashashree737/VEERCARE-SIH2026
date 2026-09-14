@@ -105,5 +105,8 @@ data["intervention_recommended"] = data["intervention_recommended"].map({
     'Unit Medical Referral': 5,
     'Immediate Welfare Escalation': 6,
 })
+data.info(verbose=True , show_counts=True)
+data.to_csv("cleaned_data.csv",index=False)
 
-print(data.dtypes[data.dtypes == 'object'])  # should be empty if all encoded
+
+data.isnull()
