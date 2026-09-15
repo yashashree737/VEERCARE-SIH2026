@@ -45,3 +45,22 @@
 - Applied single unified split across all 4 models (welfare, pss, burnout, strain) to ensure no soldier appears in both train/test
 - Fixed welfare model evaluation (line 74) to print accuracy metric instead of prediction array
 - Re-dumped all joblib model files and feature_columns.joblib with corrected feature set; verified results (pss: 0.666 r², burnout: 0.718 r², strain: 0.989 r²)
+
+## Session 2026-09-15 02:20
+
+- Removed `encode_sample()` function from datapipeline.py to simplify data processing pipeline
+- Consolidated sample conversion logic into existing `process_db_records()` and `encode_dataframe()` functions
+- Retained main test script in `__main__` block for validation of raw DB sample encoding
+
+## Session 2026-09-15 02:30
+
+- Removed `encode_val()` and `encode_sample()` functions from datapipeline.py; removed unused numpy import
+- Refactored `predict()` in ml.py to use `process_db_records()` instead of removed `encode_sample()`; unified single-sample and batch paths
+- Both `datapipeline.py` and `ml.py` now route all sample encoding through `encode_dataframe()` via `process_db_records()`
+- Retained `__main__` test scripts in both files for validation; verified single-sample predict still works
+
+## Session 2026-09-15 07:00
+
+- Removed sample demo mechanism (`if __name__ == "__main__":` block with hardcoded test data) from ml.py
+- `predict()` function already returns all ML predictions as a single dictionary for easy API consumption
+- Kept scope limited to ml.py file only per user request

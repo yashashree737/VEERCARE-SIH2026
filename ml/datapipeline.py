@@ -1,6 +1,5 @@
 from typing import Union, Dict, List, Any
 import pandas as pd
-import numpy as np
 
 # Encoding maps matching dataset.py specifications
 ENCODING_MAPS: Dict[str, Dict[str, int]] = {
@@ -106,38 +105,6 @@ ID_COLUMNS: List[str] = [
 ]
 
 
-def encode_val(col_name: str, val: Any) -> Any:
-    """Encode a single categorical value using ENCODING_MAPS if applicable."""
-    if val is None or pd.isna(val):
-        return None
-    if col_name in ENCODING_MAPS:
-        mapping = ENCODING_MAPS[col_name]
-        if isinstance(val, str) and val in mapping:
-            return mapping[val]
-        elif isinstance(val, (int, float, np.integer, np.floating)):
-            return val
-    return val
-
-
-def encode_sample(sample: Dict[str, Any], drop_ids: bool = False) -> Dict[str, Any]:
-    """
-    Encode a single dictionary record fetched from DB or JSON request.
-    
-    Parameters:
-        sample (dict): Raw key-value payload.
-        drop_ids (bool): If True, drops non-feature ID columns.
-        
-    Returns:
-        dict: Encoded numeric dictionary.
-    """
-    data = {}
-    for key, val in sample.items():
-        if drop_ids and key in ID_COLUMNS:
-            continue
-        data[key] = encode_val(key, val)
-    return data
-
-
 def encode_dataframe(df: pd.DataFrame, drop_ids: bool = False) -> pd.DataFrame:
     """
     Encode a Pandas DataFrame fetched from DB or Excel upload.
@@ -170,15 +137,15 @@ def process_db_records(records: Union[Dict[str, Any], List[Dict[str, Any]], pd.D
     Fetches raw DB records (dict, list of dicts, or DataFrame) and returns an encoded DataFrame.
     """
     if isinstance(records, dict):
-        encoded_dict = encode_sample(records, drop_ids=drop_ids)
-        return pd.DataFrame([encoded_dict])
+        df = pd.DataFrame([records])
     elif isinstance(records, list):
-        encoded_list = [encode_sample(r, drop_ids=drop_ids) for r in records]
-        return pd.DataFrame(encoded_list)
+        df = pd.DataFrame(records)
     elif isinstance(records, pd.DataFrame):
-        return encode_dataframe(records, drop_ids=drop_ids)
+        df = records
     else:
         raise ValueError(f"Unsupported record type: {type(records)}")
+
+    return encode_dataframe(df, drop_ids=drop_ids)
 
 
 if __name__ == "__main__":
