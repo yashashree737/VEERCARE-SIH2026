@@ -1,14 +1,19 @@
 from datetime import datetime
-from sqlalchemy import String, DateTime, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional, TYPE_CHECKING
+from sqlalchemy import String, DateTime, Boolean, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
+
+if TYPE_CHECKING:
+    from models.unit import Unit
+    from models.personnel import PersonnelProfile
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     # Supabase Auth user ID
     supabase_user_id: Mapped[str] = mapped_column(
@@ -23,7 +28,7 @@ class User(Base):
         nullable=False
     )
 
-    last_name: Mapped[str | None] = mapped_column(
+    last_name: Mapped[Optional[str]] = mapped_column(
         String(100),
         nullable=True
     )
@@ -35,28 +40,35 @@ class User(Base):
         nullable=False
     )
 
+    # Roles: 'soldier', 'commander', 'hr_officer', 'welfare_officer'
     role: Mapped[str] = mapped_column(
         String(50),
         nullable=False
     )
 
-    profile_photo: Mapped[str | None] = mapped_column(
+    unit_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("units.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    profile_photo: Mapped[Optional[str]] = mapped_column(
         String(500),
         nullable=True
     )
 
-    phone: Mapped[str | None] = mapped_column(
+    phone: Mapped[Optional[str]] = mapped_column(
         String(20),
         nullable=True
     )
 
-    personnel_id: Mapped[str | None] = mapped_column(
+    personnel_id: Mapped[Optional[str]] = mapped_column(
         String(100),
         unique=True,
         nullable=True
     )
 
-    unit: Mapped[str | None] = mapped_column(
+    unit: Mapped[Optional[str]] = mapped_column(
         String(150),
         nullable=True
     )
@@ -78,4 +90,10 @@ class User(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False
+    )
+
+    # Relationships
+    user_unit: Mapped[Optional["Unit"]] = relationship("Unit", foreign_keys=[unit_id])
+    personnel_profile: Mapped[Optional["PersonnelProfile"]] = relationship(
+        "PersonnelProfile", back_populates="user", uselist=False
     )

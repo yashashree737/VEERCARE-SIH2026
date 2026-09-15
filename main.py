@@ -3,7 +3,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from routes.users import router as users_router
 from database import engine, Base
-import models.user
+import models
+
 
 Base.metadata.create_all(bind=engine)
 
