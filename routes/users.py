@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from database import get_db
 from models.user import User
 from schemas.user import UserCreate, UserUpdate
+from auth import get_password_hash
 
 router = APIRouter(
     prefix="/users",
@@ -16,15 +16,22 @@ def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ):
-    existing_user = (
-        db.query(User)
-        .filter(User.supabase_user_id == user_data.supabase_user_id)
-        .first()
-    )
+    existing_user = None
+    if user_data.personnel_id:
+        existing_user = (
+            db.query(User)
+            .filter(User.personnel_id == user_data.personnel_id)
+            .first()
+        )
+    elif user_data.supabase_user_id:
+        existing_user = (
+            db.query(User)
+            .filter(User.supabase_user_id == user_data.supabase_user_id)
+            .first()
+        )
 
     # User already exists
     if existing_user:
-
         # User is trying to log in with a different role
         if existing_user.role != user_data.role:
             raise HTTPException(
@@ -50,9 +57,13 @@ def create_user(
             }
         }
 
+    # Hash the password
+    hashed_pwd = get_password_hash(user_data.password)
+
     # Create new user
     user = User(
         supabase_user_id=user_data.supabase_user_id,
+        hashed_password=hashed_pwd,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         email=user_data.email,

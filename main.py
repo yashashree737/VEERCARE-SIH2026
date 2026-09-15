@@ -11,6 +11,7 @@ from routes.commander import router as commander_router
 from routes.hr import router as hr_router
 from routes.welfare import router as welfare_router
 from routes.ml_routes import router as ml_router
+from routes.auth_routes import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,14 +38,15 @@ def verify_token(
 
 
 # Include Routers
-app.include_router(users_router)
-app.include_router(soldier_router)
-app.include_router(commander_router)
-app.include_router(hr_router)
-app.include_router(welfare_router)
-app.include_router(ml_router)
+app.include_router(users_router, dependencies=[Depends(verify_token)])
+app.include_router(soldier_router, dependencies=[Depends(verify_token)])
+app.include_router(commander_router, dependencies=[Depends(verify_token)])
+app.include_router(hr_router, dependencies=[Depends(verify_token)])
+app.include_router(welfare_router, dependencies=[Depends(verify_token)])
+app.include_router(ml_router, dependencies=[Depends(verify_token)])
+app.include_router(auth_router, dependencies=[Depends(verify_token)])
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(verify_token)])
 def health_check():
     return {"status": "healthy", "service": "VeerCare Backend API"}

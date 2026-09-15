@@ -2,7 +2,8 @@ from pydantic import BaseModel, EmailStr
 
 
 class UserCreate(BaseModel):
-    supabase_user_id: str
+    supabase_user_id: str | None = None
+    password: str
 
     first_name: str
     last_name: str | None = None
@@ -15,6 +16,11 @@ class UserCreate(BaseModel):
     personnel_id: str | None = None
     unit: str | None = None
     profile_photo: str | None = None
+
+
+class UserLogin(BaseModel):
+    personnel_id: str
+    password: str
 
 
 class UserUpdate(BaseModel):

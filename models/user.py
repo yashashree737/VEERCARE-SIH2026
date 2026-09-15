@@ -15,13 +15,20 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    # Supabase Auth user ID
-    supabase_user_id: Mapped[str] = mapped_column(
+    # Supabase Auth user ID (made optional)
+    supabase_user_id: Mapped[Optional[str]] = mapped_column(
         String(100),
         unique=True,
         index=True,
-        nullable=False
+        nullable=True
     )
+
+    # Password auth
+    hashed_password: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
 
     first_name: Mapped[str] = mapped_column(
         String(100),

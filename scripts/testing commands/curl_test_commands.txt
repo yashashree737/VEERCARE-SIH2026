@@ -1,0 +1,9 @@
+curl -X 'POST' \
+  '<base_url>/auth/login' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <api_key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "personnel_id": "<id>",
+  "password": "<password>"
+}'
