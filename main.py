@@ -12,6 +12,8 @@ from routes.hr import router as hr_router
 from routes.welfare import router as welfare_router
 from routes.ml_routes import router as ml_router
 from routes.auth_routes import router as auth_router
+from routes.ui_bridge import router as ui_bridge_router
+from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +21,15 @@ app = FastAPI(
     title="VeerCare Backend API",
     description="Military & Armed Forces Health, Burnout, Stress & Welfare Platform API (SIH 2026)",
     version="1.0.0"
+)
+
+# Enable CORS for frontend applications (Next.js)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 security = HTTPBearer(auto_error=False)
@@ -45,6 +56,7 @@ app.include_router(hr_router, dependencies=[Depends(verify_token)])
 app.include_router(welfare_router, dependencies=[Depends(verify_token)])
 app.include_router(ml_router, dependencies=[Depends(verify_token)])
 app.include_router(auth_router, dependencies=[Depends(verify_token)])
+app.include_router(ui_bridge_router, dependencies=[Depends(verify_token)])
 
 
 @app.get("/health", dependencies=[Depends(verify_token)])

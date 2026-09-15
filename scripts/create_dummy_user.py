@@ -28,7 +28,7 @@ def run():
             role="hr_officer",
             personnel_id=personnel_id,
             hashed_password=hashed_password,
-            supabase_user_id=None
+            supabase_user_id=f"SUPA-{personnel_id}"
         )
         
         db.add(new_user)
