@@ -131,17 +131,35 @@ def encode_dataframe(df: pd.DataFrame, drop_ids: bool = False) -> pd.DataFrame:
     return data
 
 
+import sys
+from pathlib import Path
+
+# Import derive_personnel_ml_features from derive module
+try:
+    from derive import derive_personnel_ml_features
+except ImportError:
+    backend_root = Path(__file__).resolve().parent.parent
+    if str(backend_root) not in sys.path:
+        sys.path.append(str(backend_root))
+    from derive import derive_personnel_ml_features
+
+
 def process_db_records(records: Union[Dict[str, Any], List[Dict[str, Any]], pd.DataFrame], drop_ids: bool = False) -> pd.DataFrame:
     """
     Main entry point for DB / JSON data pipeline.
-    Fetches raw DB records (dict, list of dicts, or DataFrame) and returns an encoded DataFrame.
+    Fetches raw non-encoded DB records, derives all computed parameters via derive.py,
+    and returns an encoded DataFrame.
     """
     if isinstance(records, dict):
-        df = pd.DataFrame([records])
+        derived_record = derive_personnel_ml_features(records)
+        df = pd.DataFrame([derived_record])
     elif isinstance(records, list):
-        df = pd.DataFrame(records)
+        derived_records = [derive_personnel_ml_features(r) for r in records]
+        df = pd.DataFrame(derived_records)
     elif isinstance(records, pd.DataFrame):
-        df = records
+        records_list = records.to_dict(orient="records")
+        derived_records = [derive_personnel_ml_features(r) for r in records_list]
+        df = pd.DataFrame(derived_records)
     else:
         raise ValueError(f"Unsupported record type: {type(records)}")
 

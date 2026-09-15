@@ -24,15 +24,20 @@ class MLPrediction(Base):
 
     burnout_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     burnout_band: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    burnout_severity: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     strain_index: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     strain_band: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    strain_alert: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     pss_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     pss_band: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     stress_score_est: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     stress_band: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    stress_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    welfare_risk_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
 
     strain_flag: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     stress_flag: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -50,6 +55,7 @@ class MLPrediction(Base):
     baseline_strain_mean: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     baseline_strain_sd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    welfare_incident: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     welfare_incident_next_week: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # High-Risk Flag: Unlocks visibility for Welfare Officers
