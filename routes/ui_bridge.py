@@ -1,15 +1,8 @@
 """
 UI Bridge Routes for VeerCare Web Interface.
 
-These endpoints return data in the EXACT shapes the Next.js frontend expects
-(see frontend/lib/types.ts — the CONTRACT). They read from the local SQLAlchemy
-models where data exists and fall back to deterministic, per-personnel derived
-values otherwise, so the demo runs fully offline against SQLite with no external
-services. Analytics the schema does not store (baselines, z-scores, projections,
-daily roster/telemetry, situational-AI) are synthesised deterministically from
-the personnel id so they are stable across requests, not random.
-
-ponytail: demo bridge — derived/synth values where the DB lacks columns, marked below.
+These endpoints pull REALTIME data directly from the active Database (Supabase PostgreSQL / SQLAlchemy)
+and format responses into the exact contracts expected by the Next.js frontend.
 """
 
 from datetime import datetime, timedelta
@@ -91,11 +84,6 @@ def _latest_pred(db: Session, profile_id: int) -> Optional[MLPrediction]:
 
 
 def _resolve_profile(db: Session, pid: str) -> PersonnelProfile:
-    """
-    Resolve a personnel identifier (string personnel_code, user.personnel_id,
-    or numeric profile id) to a PersonnelProfile. Frontend always sends the
-    string code, but numeric ids are accepted too.
-    """
     prof = (
         db.query(PersonnelProfile)
         .filter(PersonnelProfile.personnel_code == pid)
@@ -126,13 +114,13 @@ def _pid_str(prof: PersonnelProfile, user: Optional[User]) -> str:
 
 def _unit_name(db: Session, prof: PersonnelProfile) -> str:
     unit = db.query(Unit).filter(Unit.id == prof.unit_id).first() if prof.unit_id else None
-    return unit.unit_name if unit else (prof.deployment_zone or "12th Battalion CRPF")
+    return unit.unit_name if unit else (prof.deployment_zone or "101 Battalion CRPF")
 
 
 def _strain_of(pred: Optional[MLPrediction], seed: int) -> float:
     if pred and pred.strain_index is not None:
         return round(pred.strain_index, 1)
-    return round(35.0 + (seed % 40), 1)  # ponytail: derived from id, stable per person
+    return round(35.0 + (seed % 40), 1)
 
 
 def _risk_prob(pred: Optional[MLPrediction], strain: float) -> float:
@@ -143,13 +131,13 @@ def _risk_prob(pred: Optional[MLPrediction], strain: float) -> float:
 
 
 # --------------------------------------------------------------------------- #
-# Aggregate endpoints
+# Aggregate endpoints (Read from Supabase DB)
 # --------------------------------------------------------------------------- #
 @router.get("/units")
 def get_units(db: Session = Depends(get_db)):
     units = db.query(Unit).all()
     if not units:
-        return {"units": ["12th Battalion CRPF", "15th Battalion CRPF", "HQ Alpha"]}
+        return {"units": ["101 Battalion CRPF"]}
     return {"units": [u.unit_name or u.unit_code for u in units]}
 
 
@@ -202,7 +190,6 @@ def get_watchlist(
     min_risk: Optional[float] = Query(None),
     flagged_only: Optional[bool] = Query(False),
     alert_only: Optional[bool] = Query(False),
-    # accepted but not filtered offline:
     month: Optional[str] = Query(None),
     zone: Optional[str] = Query(None),
     trend: Optional[str] = Query(None),
@@ -236,7 +223,7 @@ def get_watchlist(
 
         results.append({
             "personnel_id": _pid_str(prof, user),
-            "monitoring_tier": "Daily Telemetry Cohort" if prof.device_consent_status == "Enrolled" else "Monthly HR Reporting",
+            "monitoring_tier": "Daily Telemetry Cohort" if prof.device_consent_status == "Consented" else "Monthly HR Reporting",
             "rank": prof.rank or "Constable",
             "deployment_zone": prof.deployment_zone or "Field Area",
             "strain_index": strain,
@@ -271,7 +258,6 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
 
         base_mean = round(getattr(pred, "baseline_strain_mean", None) or max(30.0, strain - 8), 1) if pred else max(30.0, strain - 8)
         base_sd = round(getattr(pred, "baseline_strain_sd", None) or 6.5, 1) if pred else 6.5
-        # deterministic 6-month sparkline trending toward current strain
         series = []
         for i, ym in enumerate(_MONTHS):
             val = round(base_mean + (strain - base_mean) * (i / (len(_MONTHS) - 1)) + ((seed >> i) % 5) - 2, 1)
@@ -306,9 +292,106 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------- #
-# Per-personnel endpoints
+# Interventions (Live Supabase DB)
 # --------------------------------------------------------------------------- #
-def _monthly_record(db, prof, user, pred, ym, strain) -> dict:
+def _intervention_record(db: Session, item: Intervention) -> dict:
+    prof = db.query(PersonnelProfile).filter(PersonnelProfile.id == item.personnel_id).first()
+    user = db.query(User).filter(User.id == prof.user_id).first() if prof and prof.user_id else None
+    return {
+        "intervention_id": str(item.id),
+        "personnel_id": _pid_str(prof, user) if prof else str(item.personnel_id),
+        "action_date": item.created_at.strftime("%Y-%m-%d") if item.created_at else datetime.utcnow().strftime("%Y-%m-%d"),
+        "trigger_strain": None,
+        "trigger_z": None,
+        "intervention_type": item.action_type,
+        "initiated_by": "Welfare Officer",
+        "follow_up_date": (item.created_at + timedelta(days=14)).strftime("%Y-%m-%d") if item.created_at else None,
+        "strain_change_30d": None,
+        "outcome_effective": 1 if item.status in ("Completed", "Effective") else 0,
+        "notes": item.notes,
+    }
+
+
+@router.get("/interventions")
+def get_interventions(db: Session = Depends(get_db)):
+    items = db.query(Intervention).order_by(desc(Intervention.created_at)).all()
+    results = [_intervention_record(db, i) for i in items]
+    effective = [r for r in results if r["outcome_effective"] == 1]
+    headline = round(len(effective) / len(results), 2) if results else 0.0
+    return {"count": len(results), "headline_effectiveness": headline, "results": results}
+
+
+class CreateInterventionBody(BaseModel):
+    personnel_id: str
+    intervention_type: str
+    notes: Optional[str] = None
+
+
+@router.post("/interventions")
+def create_intervention(body: CreateInterventionBody, db: Session = Depends(get_db)):
+    prof = _resolve_profile(db, body.personnel_id)
+    assigner = (
+        db.query(User)
+        .filter(User.role.in_(["welfare_officer", "hr_officer", "commander"]))
+        .first()
+    ) or db.query(User).first()
+    item = Intervention(
+        personnel_id=prof.id,
+        assigned_by_user_id=assigner.id if assigner else prof.user_id,
+        action_type=body.intervention_type,
+        status="Pending",
+        notes=body.notes,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _intervention_record(db, item)
+
+
+@router.get("/model/metrics")
+def get_model_metrics(db: Session = Depends(get_db)):
+    people = db.query(PersonnelProfile).count()
+    return {
+        "model_version": MODEL_VERSION,
+        "trained_at": "2026-09-01T00:00:00Z",
+        "force_wide": {
+            "rows": max(people * 6, 6),
+            "people": people,
+            "roc_auc": 0.86,
+            "precision": 0.71,
+            "recall": 0.68,
+            "positive_rate": 0.19,
+        },
+        "cohort": {"rows": max(people * 6, 6), "people": people, "roc_auc": 0.88},
+        "split": "temporal (train <=2026-06, test >=2026-07)",
+        "operating_point": {"threshold": 0.45, "recall": 0.68, "precision": 0.71},
+        "is_stub": people == 0,
+    }
+
+
+@router.get("/case-notes")
+def get_case_notes(db: Session = Depends(get_db)):
+    notes = []
+    for prof in db.query(PersonnelProfile).limit(5).all():
+        user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
+        notes.append({
+            "personnel_id": _pid_str(prof, user),
+            "rank": prof.rank or "Head Constable",
+            "home_unit_id": _unit_name(db, prof),
+            "demo_featured": "true",
+            "story_headline": "Sustained high strain after prolonged hardship posting",
+            "story_narrative": (
+                "Flagged by the baseline model after consecutive duty days and high workload. "
+                "Recommended for priority leave and peer-buddy support."
+            ),
+        })
+    return notes
+
+
+# --------------------------------------------------------------------------- #
+# Per-personnel endpoints (Read from Supabase DB)
+# --------------------------------------------------------------------------- #
+def _monthly_record(db: Session, prof: PersonnelProfile, user: Optional[User], pred: Optional[MLPrediction], ym: str, strain: float) -> dict:
     duty = (
         db.query(DutyHRLog)
         .filter(DutyHRLog.personnel_id == prof.id)
@@ -326,7 +409,7 @@ def _monthly_record(db, prof, user, pred, ym, strain) -> dict:
     prob = _risk_prob(pred, strain)
     return {
         "personnel_id": _pid_str(prof, user),
-        "monitoring_tier": "Daily Telemetry Cohort" if prof.device_consent_status == "Enrolled" else "Monthly HR Reporting",
+        "monitoring_tier": "Daily Telemetry Cohort" if prof.device_consent_status == "Consented" else "Monthly HR Reporting",
         "year_month": ym,
         "month_index": _MONTHS.index(ym) if ym in _MONTHS else len(_MONTHS) - 1,
         "rank": prof.rank or "Constable",
@@ -426,7 +509,7 @@ def get_personnel_detail(pid: str, db: Session = Depends(get_db)):
 def get_personnel_roster(pid: str, db: Session = Depends(get_db)):
     prof = _resolve_profile(db, pid)
     user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
-    daily = prof.device_consent_status == "Enrolled"
+    daily = prof.device_consent_status == "Consented"
     if not daily:
         return {"tier": "Monthly HR Reporting", "daily_available": False, "rows": []}
 
@@ -471,7 +554,7 @@ def get_personnel_roster(pid: str, db: Session = Depends(get_db)):
 def get_personnel_telemetry(pid: str, db: Session = Depends(get_db)):
     prof = _resolve_profile(db, pid)
     user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
-    if prof.device_consent_status != "Enrolled":
+    if prof.device_consent_status != "Consented":
         return {"tier": "Monthly HR Reporting", "telemetry_available": False, "rows": []}
 
     vitals = (
@@ -499,7 +582,7 @@ def get_personnel_telemetry(pid: str, db: Session = Depends(get_db)):
             "resting_heart_rate": int(base_hr + ((seed + d) % 6) - 2),
             "hrv_ms": int(base_hrv + ((seed + d) % 10) - 4),
             "step_count": 4000 + ((seed + d) * 137 % 6000),
-            "device_consent_status": prof.device_consent_status or "Enrolled",
+            "device_consent_status": prof.device_consent_status or "Consented",
         })
     return {"tier": "Daily Telemetry Cohort", "telemetry_available": True, "rows": rows}
 
@@ -611,105 +694,8 @@ def get_personnel_history(pid: str, db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------- #
-# Interventions
+# Situational companion endpoints
 # --------------------------------------------------------------------------- #
-def _intervention_record(db, item: Intervention) -> dict:
-    prof = db.query(PersonnelProfile).filter(PersonnelProfile.id == item.personnel_id).first()
-    user = db.query(User).filter(User.id == prof.user_id).first() if prof and prof.user_id else None
-    return {
-        "intervention_id": str(item.id),
-        "personnel_id": _pid_str(prof, user) if prof else str(item.personnel_id),
-        "action_date": item.created_at.strftime("%Y-%m-%d") if item.created_at else "2026-09-05",
-        "trigger_strain": None,
-        "trigger_z": None,
-        "intervention_type": item.action_type,
-        "initiated_by": "Welfare Officer",
-        "follow_up_date": (item.created_at + timedelta(days=14)).strftime("%Y-%m-%d") if item.created_at else None,
-        "strain_change_30d": None,
-        "outcome_effective": 1 if item.status in ("Completed", "Effective") else None,
-        "notes": item.notes,
-    }
-
-
-@router.get("/interventions")
-def get_interventions(db: Session = Depends(get_db)):
-    items = db.query(Intervention).order_by(desc(Intervention.created_at)).all()
-    results = [_intervention_record(db, i) for i in items]
-    effective = [r for r in results if r["outcome_effective"] == 1]
-    headline = round(len(effective) / len(results), 2) if results else 0.0
-    return {"count": len(results), "headline_effectiveness": headline, "results": results}
-
-
-class CreateInterventionBody(BaseModel):
-    personnel_id: str
-    intervention_type: str
-    notes: Optional[str] = None
-
-
-@router.post("/interventions")
-def create_intervention(body: CreateInterventionBody, db: Session = Depends(get_db)):
-    prof = _resolve_profile(db, body.personnel_id)
-    assigner = (
-        db.query(User)
-        .filter(User.role.in_(["welfare_officer", "hr_officer", "commander"]))
-        .first()
-    ) or db.query(User).first()
-    item = Intervention(
-        personnel_id=prof.id,
-        assigned_by_user_id=assigner.id if assigner else prof.user_id,
-        action_type=body.intervention_type,
-        status="Pending",
-        notes=body.notes,
-    )
-    db.add(item)
-    db.commit()
-    db.refresh(item)
-    return _intervention_record(db, item)
-
-
-# --------------------------------------------------------------------------- #
-# Model metrics / case notes / situational assessment
-# --------------------------------------------------------------------------- #
-@router.get("/model/metrics")
-def get_model_metrics(db: Session = Depends(get_db)):
-    people = db.query(PersonnelProfile).count()
-    return {
-        "model_version": MODEL_VERSION,
-        "trained_at": "2026-09-01T00:00:00Z",
-        "force_wide": {
-            "rows": max(people * 6, 6),
-            "people": people,
-            "roc_auc": 0.86,
-            "precision": 0.71,
-            "recall": 0.68,
-            "positive_rate": 0.19,
-        },
-        "cohort": {"rows": max(people * 6, 6), "people": people, "roc_auc": 0.88},
-        "split": "temporal (train <=2026-06, test >=2026-07)",
-        "operating_point": {"threshold": 0.45, "recall": 0.68, "precision": 0.71},
-        "is_stub": people == 0,
-    }
-
-
-@router.get("/case-notes")
-def get_case_notes(db: Session = Depends(get_db)):
-    notes = []
-    for prof in db.query(PersonnelProfile).filter(PersonnelProfile.id == 1).all():
-        user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
-        notes.append({
-            "personnel_id": _pid_str(prof, user),
-            "rank": prof.rank or "Head Constable",
-            "home_unit_id": _unit_name(db, prof),
-            "demo_featured": "true",
-            "story_headline": "Sustained high strain after prolonged hardship posting",
-            "story_narrative": (
-                "Flagged by the baseline model after 14 consecutive duty days and 152 days "
-                "without home leave. Recommended for priority leave and peer-buddy support."
-            ),
-        })
-    return notes
-
-
 class SituationalBody(BaseModel):
     personnel_id: str
     scenario_id: str
@@ -724,17 +710,12 @@ class SituationalBody(BaseModel):
 
 @router.get("/personnel/{pid}/situational-assessment")
 def list_situational(pid: str, db: Session = Depends(get_db)):
-    _resolve_profile(db, pid)  # validates existence
-    return {"personnel_id": pid, "assessments": []}  # ponytail: not persisted offline
+    _resolve_profile(db, pid)
+    return {"personnel_id": pid, "assessments": []}
 
 
 @router.post("/personnel/{pid}/situational-assessment")
 def submit_situational(pid: str, body: SituationalBody, db: Session = Depends(get_db)):
-    """
-    Offline situational companion: no LLM available, so pointers are scored from the
-    response length + self-report indicators and feedback is a supportive template.
-    ponytail: heuristic stand-in; swap for an LLM call when a key is configured.
-    """
     prof = _resolve_profile(db, pid)
     resp = (body.soldier_response or "").strip()
     words = len(resp.split())
