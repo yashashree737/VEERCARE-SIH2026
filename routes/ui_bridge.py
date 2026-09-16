@@ -1,7 +1,7 @@
 """
 UI Bridge Routes for VeerCare Web Interface.
 
-These endpoints pull REALTIME data directly from the active Database (Supabase PostgreSQL / SQLAlchemy)
+These endpoints pull REALTIME data directly from the active Database (Neon PostgreSQL / SQLAlchemy)
 and format responses into the exact contracts expected by the Next.js frontend.
 """
 
@@ -131,7 +131,7 @@ def _risk_prob(pred: Optional[MLPrediction], strain: float) -> float:
 
 
 # --------------------------------------------------------------------------- #
-# Aggregate endpoints (Read from Supabase DB)
+# Aggregate endpoints (Read from Neon DB)
 # --------------------------------------------------------------------------- #
 @router.get("/units")
 def get_units(db: Session = Depends(get_db)):
@@ -169,11 +169,30 @@ def _get_bulk_caches(db: Session, max_profiles: int = 500):
 
 @router.get("/summary")
 def get_summary(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    total = db.query(PersonnelProfile).count()
-    interventions = db.query(Intervention).count()
-    incidents = db.query(IncidentDisciplineLog).count()
-
     profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=500)
+
+    # Filter by unit if provided
+    if unit and unit not in ("All", "", None):
+        filtered_profiles = []
+        for prof in profiles:
+            unit_obj = units_cache.get(prof.unit_id)
+            unit_name = unit_obj.unit_name if unit_obj else (prof.deployment_zone or "101 Battalion CRPF")
+            if unit_name == unit:
+                filtered_profiles.append(prof)
+        profiles = filtered_profiles
+        
+        prof_ids = [p.id for p in profiles]
+        total = len(profiles)
+        if prof_ids:
+            interventions = db.query(Intervention).filter(Intervention.personnel_id.in_(prof_ids)).count()
+            incidents = db.query(IncidentDisciplineLog).filter(IncidentDisciplineLog.personnel_id.in_(prof_ids)).count()
+        else:
+            interventions = 0
+            incidents = 0
+    else:
+        total = db.query(PersonnelProfile).count()
+        interventions = db.query(Intervention).count()
+        incidents = db.query(IncidentDisciplineLog).count()
 
     high = moderate = 0
     dist = {"Low": 0, "Moderate": 0, "High": 0, "Severe": 0}
@@ -206,7 +225,7 @@ def get_summary(unit: Optional[str] = Query(None), db: Session = Depends(get_db)
             {
                 "band": band,
                 "count": int(count * (total / sample_size)),
-                "pct": round(count / sample_size * 100, 1),
+                "pct": round(count / sample_size * 100, 1) if sample_size > 0 else 0.0,
             }
             for band, count in dist.items()
         ],
@@ -332,7 +351,7 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------- #
-# Interventions (Live Supabase DB)
+# Interventions (Live Neon DB)
 # --------------------------------------------------------------------------- #
 def _intervention_record(db: Session, item: Intervention) -> dict:
     prof = db.query(PersonnelProfile).filter(PersonnelProfile.id == item.personnel_id).first()
@@ -429,7 +448,7 @@ def get_case_notes(db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------- #
-# Per-personnel endpoints (Read from Supabase DB)
+# Per-personnel endpoints (Read from Neon DB)
 # --------------------------------------------------------------------------- #
 def _monthly_record(db: Session, prof: PersonnelProfile, user: Optional[User], pred: Optional[MLPrediction], ym: str, strain: float) -> dict:
     duty = (

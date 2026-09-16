@@ -12,7 +12,6 @@ db_url = (
     os.getenv("NEON_DATABASE_URL")
     or os.getenv("NEON_URL")
     or os.getenv("DATABASE_URL")
-    or os.getenv("SUPABASE_DB_URL")
     or "sqlite:///./veercare.db"
 )
 DATABASE_URL = db_url
