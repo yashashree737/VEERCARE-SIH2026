@@ -316,13 +316,19 @@ def run_converter():
                         days_since_last_test=_int(row.get("days_since_last_test"), 7),
                     )
                     batch_records.append(pvt_test)
-
             except Exception as row_err:
                 print(f"Warning: Failed formatting row {total_rows}: {row_err}", flush=True)
                 continue
 
+            # Stop at 5000 rows as explicitly requested
+            if total_rows >= 5000:
+                print(f"[LIMIT] Reached maximum requested row limit of 5000 rows. Stopping ingestion.", flush=True)
+                break
+
+
             # Flush batch and recreate DB session every BATCH_SIZE rows to avoid connection timeouts
             if total_rows % BATCH_SIZE == 0:
+
                 try:
                     current_session.add_all(batch_records)
                     current_session.commit()
@@ -352,7 +358,7 @@ def run_converter():
             current_session.close()
 
     elapsed = time.time() - start_time
-    print(f"\n✅ CONVERTER FINISHED SUCCESSFULLY!", flush=True)
+    print(f"\n[SUCCESS] CONVERTER FINISHED SUCCESSFULLY!", flush=True)
     print(f"Total CSV Rows Processed: {total_rows}", flush=True)
     print(f"Total Time Taken: {elapsed:.2f} seconds ({total_rows / max(elapsed, 0.001):.1f} rows/sec)", flush=True)
 

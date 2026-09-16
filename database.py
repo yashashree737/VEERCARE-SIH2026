@@ -9,6 +9,8 @@ except ImportError:
     pass
 
 db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or "sqlite:///./veercare.db"
+DATABASE_URL = db_url
+
 
 # Format legacy postgres:// to postgresql:// for SQLAlchemy 2.0+
 if db_url.startswith("postgres://"):

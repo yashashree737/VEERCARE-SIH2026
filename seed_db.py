@@ -111,6 +111,11 @@ def init_db_and_seed():
         ]
 
         for item in users_to_create:
+            # Get existing unit id or default unit
+            target_unit = db.query(Unit).first()
+            unit_id = target_unit.id if target_unit else 1
+
+            # Ensure user exists
             user = db.query(User).filter(User.personnel_id == item["personnel_id"]).first()
             if not user:
                 hashed_pass = get_password_hash(item["password"])
@@ -120,7 +125,7 @@ def init_db_and_seed():
                     last_name=item["last_name"],
                     email=item["email"],
                     role=item["role"],
-                    unit_id=item["unit_id"],
+                    unit_id=unit_id,
                     hashed_password=hashed_pass,
                     supabase_user_id=f"SUPA-{item['personnel_id']}",
                 )
@@ -133,7 +138,7 @@ def init_db_and_seed():
             if not profile:
                 profile = PersonnelProfile(
                     user_id=user.id,
-                    unit_id=item["unit_id"],
+                    unit_id=unit_id,
                     personnel_code=item["personnel_id"],
                     rank=item["rank"],
                     service_years=6,
