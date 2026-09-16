@@ -15,7 +15,10 @@ from routes.auth_routes import router as auth_router
 from routes.ui_bridge import router as ui_bridge_router
 from fastapi.middleware.cors import CORSMiddleware
 
-Base.metadata.create_all(bind=engine)
+from seed_db import init_db_and_seed
+
+# Initialize DB tables and seed default demo records if missing
+init_db_and_seed()
 
 app = FastAPI(
     title="VeerCare Backend API",
@@ -23,11 +26,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for frontend applications (Next.js)
+# Enable CORS for frontend applications (Next.js).
+# Auth is carried in the Authorization header (Bearer), not cookies, so we do NOT
+# need credentialed CORS. allow_credentials=True together with allow_origins=["*"]
+# is rejected by browsers per spec; keeping credentials off lets "*" work for LAN
+# demo machines without that footgun. Lock allow_origins to your frontend origin(s)
+# for production.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -49,14 +57,14 @@ def verify_token(
 
 
 # Include Routers
+app.include_router(auth_router)  # Authentication route does not require API key token
+app.include_router(ui_bridge_router)  # UI Bridge routes
 app.include_router(users_router, dependencies=[Depends(verify_token)])
 app.include_router(soldier_router, dependencies=[Depends(verify_token)])
 app.include_router(commander_router, dependencies=[Depends(verify_token)])
 app.include_router(hr_router, dependencies=[Depends(verify_token)])
 app.include_router(welfare_router, dependencies=[Depends(verify_token)])
 app.include_router(ml_router, dependencies=[Depends(verify_token)])
-app.include_router(auth_router, dependencies=[Depends(verify_token)])
-app.include_router(ui_bridge_router, dependencies=[Depends(verify_token)])
 
 
 @app.get("/health", dependencies=[Depends(verify_token)])
