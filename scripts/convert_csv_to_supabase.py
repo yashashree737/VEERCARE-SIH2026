@@ -1,8 +1,16 @@
 """
-Converter Pipeline: CSV Line to JSON Models to Supabase DB
+Converter Pipeline: CSV Line to JSON Models to Neon DB
 
 Processes data2.csv line-by-line, formats row dictionaries into normalized SQLAlchemy models,
-and pushes them to Supabase PostgreSQL in high-performance batches (500 rows per batch).
+and pushes them to your NEON PostgreSQL database in high-performance batches (500 rows per batch).
+
+NOTE: This script intentionally does NOT use the `engine` / `SessionLocal` / `db_url`
+exported by database.py (those still point at Supabase for your live app). Instead it
+builds its own engine from the NEON_DATABASE_URL environment variable, so running this
+migration script has zero effect on your app's normal Supabase connection.
+
+Only the models/table schemas (Base.metadata) are reused from your existing codebase --
+the actual DB connection used here is Neon.
 """
 
 import csv
@@ -14,7 +22,12 @@ from datetime import datetime
 # Ensure backend root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import engine, Base, SessionLocal, db_url
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# We still need Base (for schema metadata) and the model classes, but NOT the
+# Supabase-bound engine/SessionLocal/db_url -- those are redefined below for Neon.
+from database import Base
 import models
 from models import (
     Unit,
@@ -28,6 +41,21 @@ from models import (
     MLPrediction,
 )
 from auth import get_password_hash
+
+# --- Neon connection setup -------------------------------------------------
+db_url = os.environ.get("NEON_DATABASE_URL")
+if not db_url:
+    print(
+        "Error: NEON_DATABASE_URL environment variable is not set.\n"
+        "Set it to your Neon connection string, e.g.:\n"
+        '  export NEON_DATABASE_URL="postgresql://user:password@ep-xxxx.neon.tech/dbname?sslmode=require"\n',
+        flush=True,
+    )
+    sys.exit(1)
+
+engine = create_engine(db_url, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# -----------------------------------------------------------------------------
 
 CSV_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ml", "datasets", "data2.csv"
@@ -62,7 +90,7 @@ def _bool(val, default=False):
 
 
 def run_converter():
-    print(f"=== Starting CSV to Supabase Batch Converter ===", flush=True)
+    print(f"=== Starting CSV to Neon Batch Converter ===", flush=True)
     print(f"Target Database URL: {db_url}", flush=True)
     print(f"Source CSV Path: {CSV_PATH}", flush=True)
     print(f"Batch Size: {BATCH_SIZE} rows per commit\n", flush=True)
@@ -72,7 +100,7 @@ def run_converter():
         return
 
     # 1. Ensure database schema is present with retries
-    print("Verifying/creating database schema in target DB...", flush=True)
+    print("Verifying/creating database schema in target DB (Neon)...", flush=True)
     max_retries = 5
     for attempt in range(1, max_retries + 1):
         try:
@@ -116,7 +144,7 @@ def run_converter():
         u_name = f"{unit_code.replace('_', ' ')} Battalion CRPF"
         if u_name in unit_cache:
             return unit_cache[u_name]
-        
+
         existing_any = session.query(Unit).first()
         if existing_any:
             unit_cache[unit_code] = existing_any.id
@@ -192,7 +220,7 @@ def run_converter():
     total_rows = 0
     batch_records = []
     start_time = time.time()
-    TOTAL_EXPECTED = 62400
+    TOTAL_EXPECTED = 5000  # We're only migrating the first 5000 rows to Neon
 
     current_session = SessionLocal()
 
@@ -324,7 +352,6 @@ def run_converter():
             if total_rows >= 5000:
                 print(f"[LIMIT] Reached maximum requested row limit of 5000 rows. Stopping ingestion.", flush=True)
                 break
-
 
             # Flush batch and recreate DB session every BATCH_SIZE rows to avoid connection timeouts
             if total_rows % BATCH_SIZE == 0:

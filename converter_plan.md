@@ -18,7 +18,6 @@ The converter function will act as a bridge between the raw `data2.csv` file and
 - We will utilize Python's built-in `csv` module (specifically `csv.DictReader`) to read the file row by row without overwhelming the system memory.
 - To communicate with Supabase, we have two options:
   - **Option A (Current Ecosystem):** Reuse your existing SQLAlchemy setup (`database.py`) and simply map the dictionary to your SQLAlchemy models (like `Unit`, `User`, `PersonnelProfile`), then use `db.commit()`.
-  - **Option B (Direct Supabase API):** Use the official `supabase-py` client to send the JSON payloads directly to the Supabase REST API via `supabase.table("table_name").insert(json_payload).execute()`.
 
 ### 2. The Converter Function Logic
 We will build a core function, for example, `process_csv_row(row_dict)`. Inside this function:

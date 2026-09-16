@@ -141,18 +141,45 @@ def get_units(db: Session = Depends(get_db)):
     return {"units": [u.unit_name or u.unit_code for u in units]}
 
 
+def _get_bulk_caches(db: Session, max_profiles: int = 500):
+    profiles = db.query(PersonnelProfile).limit(max_profiles).all()
+    if not profiles:
+        return profiles, {}, {}, {}
+    prof_ids = [p.id for p in profiles]
+    user_ids = [p.user_id for p in profiles if p.user_id]
+    unit_ids = [p.unit_id for p in profiles if p.unit_id]
+
+    users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    units = {u.id: u for u in db.query(Unit).filter(Unit.id.in_(unit_ids)).all()} if unit_ids else {}
+
+    preds = {}
+    if prof_ids:
+        raw_preds = (
+            db.query(MLPrediction)
+            .filter(MLPrediction.personnel_id.in_(prof_ids))
+            .order_by(desc(MLPrediction.created_at))
+            .all()
+        )
+        for pr in raw_preds:
+            if pr.personnel_id not in preds:
+                preds[pr.personnel_id] = pr
+
+    return profiles, users, units, preds
+
+
 @router.get("/summary")
 def get_summary(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    profiles = db.query(PersonnelProfile).all()
-    total = len(profiles)
-
-    high = moderate = 0
+    total = db.query(PersonnelProfile).count()
     interventions = db.query(Intervention).count()
     incidents = db.query(IncidentDisciplineLog).count()
 
+    profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=500)
+
+    high = moderate = 0
     dist = {"Low": 0, "Moderate": 0, "High": 0, "Severe": 0}
+
     for prof in profiles:
-        pred = _latest_pred(db, prof.id)
+        pred = preds.get(prof.id)
         strain = _strain_of(pred, _seed(prof))
         band = _strain_band(strain)
         dist[band] += 1
@@ -161,12 +188,16 @@ def get_summary(unit: Optional[str] = Query(None), db: Session = Depends(get_db)
         elif band == "Moderate":
             moderate += 1
 
+    sample_size = max(len(profiles), 1)
+    scaled_high = int(high * (total / sample_size))
+    scaled_moderate = int(moderate * (total / sample_size))
+
     return {
         "current_month": _MONTHS[-1],
         "personnel_monitored": total,
         "cohort_size": total,
-        "baseline_alerts_active": high,
-        "of_concern": high + moderate,
+        "baseline_alerts_active": scaled_high,
+        "of_concern": scaled_high + scaled_moderate,
         "incidents_last_month": incidents,
         "interventions_this_month": interventions,
         "model_version": MODEL_VERSION,
@@ -174,8 +205,8 @@ def get_summary(unit: Optional[str] = Query(None), db: Session = Depends(get_db)
         "strain_distribution": [
             {
                 "band": band,
-                "count": count,
-                "pct": round(count / max(total, 1) * 100, 1),
+                "count": int(count * (total / sample_size)),
+                "pct": round(count / sample_size * 100, 1),
             }
             for band, count in dist.items()
         ],
@@ -196,16 +227,21 @@ def get_watchlist(
     tier: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    profiles = db.query(PersonnelProfile).all()
+    max_scan = max(limit or 50, 100)
+    profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=max_scan)
+
     results = []
     for prof in profiles:
-        user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
-        pred = _latest_pred(db, prof.id)
+        user = users.get(prof.user_id)
+        pred = preds.get(prof.id)
         seed = _seed(prof)
         strain = _strain_of(pred, seed)
         s_band = _strain_band(strain)
         prob = _risk_prob(pred, strain)
-        unit_name = _unit_name(db, prof)
+
+        unit_obj = units_cache.get(prof.unit_id)
+        unit_name = unit_obj.unit_name if unit_obj else (prof.deployment_zone or "101 Battalion CRPF")
+
         baseline_alert = getattr(pred, "baseline_alert_flag", None) if pred else None
         baseline_alert = int(baseline_alert) if baseline_alert is not None else (1 if strain >= 60 else 0)
 
@@ -245,14 +281,18 @@ def get_watchlist(
 
 @router.get("/wall")
 def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    profiles = db.query(PersonnelProfile).all()
+    profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=100)
+
     cards = []
     for prof in profiles:
-        user = db.query(User).filter(User.id == prof.user_id).first() if prof.user_id else None
-        pred = _latest_pred(db, prof.id)
+        user = users.get(prof.user_id)
+        pred = preds.get(prof.id)
         seed = _seed(prof)
         strain = _strain_of(pred, seed)
-        unit_name = _unit_name(db, prof)
+
+        unit_obj = units_cache.get(prof.unit_id)
+        unit_name = unit_obj.unit_name if unit_obj else (prof.deployment_zone or "101 Battalion CRPF")
+
         if unit and unit not in ("All", "", None) and unit_name != unit:
             continue
 
