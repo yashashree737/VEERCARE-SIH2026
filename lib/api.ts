@@ -1,3 +1,9 @@
+/**
+ * VeerCare Frontend API Client.
+ * Currently routed to use local `seedApi` (lib/seed.ts) so the frontend runs
+ * 100% standalone and error-free on any machine without backend dependencies.
+ */
+
 import {
   SummaryResponse,
   WatchlistResponse,
@@ -18,6 +24,10 @@ import {
   AuthUser,
   LoginResponse,
 } from "./types";
+import { seedApi } from "./seed";
+
+// Toggle flag: false = Live Backend Mode (http://127.0.0.1:8000), true = Standalone Seed Mode
+const USE_SEED_MODE = false;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 
@@ -74,7 +84,6 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     }
 
     if (res.status === 401 && typeof window !== "undefined") {
-      // Clear expired session and redirect with next param
       localStorage.removeItem("veercare_token");
       localStorage.removeItem("veercare_user");
       const currentPath = window.location.pathname + window.location.search;
@@ -90,7 +99,10 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
 }
 
 export const api = {
-  getSummary: (): Promise<SummaryResponse> => fetchJson<SummaryResponse>("/api/summary"),
+  getSummary: (): Promise<SummaryResponse> => {
+    if (USE_SEED_MODE) return seedApi.getSummary();
+    return fetchJson<SummaryResponse>("/api/summary");
+  },
 
   getWatchlist: (params?: {
     month?: string;
@@ -104,6 +116,7 @@ export const api = {
     alert_only?: boolean;
     min_risk?: number;
   }): Promise<WatchlistResponse> => {
+    if (USE_SEED_MODE) return seedApi.getWatchlist(params);
     const q = new URLSearchParams();
     if (params?.month) q.set("month", params.month);
     if (params?.limit) q.set("limit", String(params.limit));
@@ -121,62 +134,95 @@ export const api = {
   },
 
   getWall: (unit?: string): Promise<WallResponse> => {
+    if (USE_SEED_MODE) return seedApi.getWall(unit);
     const qs = unit ? `?unit=${encodeURIComponent(unit)}` : "";
     return fetchJson<WallResponse>(`/api/wall${qs}`);
   },
 
-  getPersonnel: (id: string): Promise<PersonnelDetailResponse> =>
-    fetchJson<PersonnelDetailResponse>(`/api/personnel/${id}`),
+  getPersonnel: (id: string): Promise<PersonnelDetailResponse> => {
+    if (USE_SEED_MODE) return seedApi.getPersonnel(id);
+    return fetchJson<PersonnelDetailResponse>(`/api/personnel/${id}`);
+  },
 
-  getRoster: (id: string): Promise<RosterResponse> =>
-    fetchJson<RosterResponse>(`/api/personnel/${id}/roster`),
+  getRoster: (id: string): Promise<RosterResponse> => {
+    if (USE_SEED_MODE) return seedApi.getRoster(id);
+    return fetchJson<RosterResponse>(`/api/personnel/${id}/roster`);
+  },
 
-  getTelemetry: (id: string): Promise<TelemetryResponse> =>
-    fetchJson<TelemetryResponse>(`/api/personnel/${id}/telemetry`),
+  getTelemetry: (id: string): Promise<TelemetryResponse> => {
+    if (USE_SEED_MODE) return seedApi.getTelemetry(id);
+    return fetchJson<TelemetryResponse>(`/api/personnel/${id}/telemetry`);
+  },
 
-  getDrivers: (id: string): Promise<DriversResponse> =>
-    fetchJson<DriversResponse>(`/api/personnel/${id}/drivers`),
+  getDrivers: (id: string): Promise<DriversResponse> => {
+    if (USE_SEED_MODE) return seedApi.getDrivers(id);
+    return fetchJson<DriversResponse>(`/api/personnel/${id}/drivers`);
+  },
 
-  getStrainBreakdown: (id: string): Promise<StrainBreakdownResponse> =>
-    fetchJson<StrainBreakdownResponse>(`/api/personnel/${id}/strain-breakdown`),
+  getStrainBreakdown: (id: string): Promise<StrainBreakdownResponse> => {
+    if (USE_SEED_MODE) return seedApi.getStrainBreakdown(id);
+    return fetchJson<StrainBreakdownResponse>(`/api/personnel/${id}/strain-breakdown`);
+  },
 
-  getHistory: (id: string): Promise<HistoryResponse> =>
-    fetchJson<HistoryResponse>(`/api/personnel/${id}/history`),
+  getHistory: (id: string): Promise<HistoryResponse> => {
+    if (USE_SEED_MODE) return seedApi.getHistory(id);
+    return fetchJson<HistoryResponse>(`/api/personnel/${id}/history`);
+  },
 
-  getInterventions: (): Promise<InterventionsResponse> =>
-    fetchJson<InterventionsResponse>("/api/interventions"),
+  getInterventions: (): Promise<InterventionsResponse> => {
+    if (USE_SEED_MODE) return seedApi.getInterventions();
+    return fetchJson<InterventionsResponse>("/api/interventions");
+  },
 
-  createIntervention: (req: CreateInterventionRequest): Promise<InterventionRecord> =>
-    fetchJson<InterventionRecord>("/api/interventions", {
+  createIntervention: (req: CreateInterventionRequest): Promise<InterventionRecord> => {
+    if (USE_SEED_MODE) return seedApi.createIntervention(req);
+    return fetchJson<InterventionRecord>("/api/interventions", {
       method: "POST",
       body: JSON.stringify(req),
-    }),
+    });
+  },
 
-  getMetrics: (): Promise<MetricsResponse> => fetchJson<MetricsResponse>("/api/model/metrics"),
+  getMetrics: (): Promise<MetricsResponse> => {
+    if (USE_SEED_MODE) return seedApi.getMetrics();
+    return fetchJson<MetricsResponse>("/api/model/metrics");
+  },
 
-  getUnits: (): Promise<{ units: string[] }> => fetchJson<{ units: string[] }>("/api/units"),
+  getUnits: (): Promise<{ units: string[] }> => {
+    if (USE_SEED_MODE) return seedApi.getUnits();
+    return fetchJson<{ units: string[] }>("/api/units");
+  },
 
-  getCaseNotes: (): Promise<CaseNote[]> => fetchJson<CaseNote[]>("/api/case-notes"),
+  getCaseNotes: (): Promise<CaseNote[]> => {
+    if (USE_SEED_MODE) return seedApi.getCaseNotes();
+    return fetchJson<CaseNote[]>("/api/case-notes");
+  },
 
   submitSituationalAssessment: (
     req: SituationalAssessmentRequest
-  ): Promise<SituationalAssessmentResponse> =>
-    fetchJson<SituationalAssessmentResponse>(
+  ): Promise<SituationalAssessmentResponse> => {
+    if (USE_SEED_MODE) return seedApi.submitSituationalAssessment(req);
+    return fetchJson<SituationalAssessmentResponse>(
       `/api/personnel/${req.personnel_id}/situational-assessment`,
       {
         method: "POST",
         body: JSON.stringify(req),
       }
-    ),
+    );
+  },
 
   getSituationalAssessments: (
     id: string
-  ): Promise<{ personnel_id: string; assessments: SituationalAssessmentResponse[] }> =>
-    fetchJson<{ personnel_id: string; assessments: SituationalAssessmentResponse[] }>(
+  ): Promise<{ personnel_id: string; assessments: SituationalAssessmentResponse[] }> => {
+    if (USE_SEED_MODE) return seedApi.getSituationalAssessments(id);
+    return fetchJson<{ personnel_id: string; assessments: SituationalAssessmentResponse[] }>(
       `/api/personnel/${id}/situational-assessment`
-    ),
+    );
+  },
 
   login: async (personnel_id: string, password: string): Promise<LoginResponse> => {
+    if (USE_SEED_MODE) {
+      return seedApi.login(personnel_id, password);
+    }
     const rawRes = await fetchJson<{
       message: string;
       user: {
@@ -195,8 +241,6 @@ export const api = {
     });
 
     const userObj = rawRes.user;
-    
-    // Map backend user role to UI role expectation
     let mappedRole: AuthUser["role"] = "admin";
     if (userObj.role === "soldier") mappedRole = "personnel";
     else if (userObj.role === "commander") mappedRole = "commander";
@@ -218,9 +262,6 @@ export const api = {
     };
   },
 
-  // Offline-first session restore: the login response is persisted to
-  // localStorage, so we rehydrate from there instead of calling the backend.
-  // (No /api/auth/me endpoint exists; the demo must work with no network.)
   getMe: (): Promise<AuthUser> => {
     const raw = typeof window !== "undefined" ? localStorage.getItem("veercare_user") : null;
     if (raw) {

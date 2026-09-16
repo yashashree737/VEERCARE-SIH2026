@@ -26,6 +26,7 @@ import TelemetryPanel from "@/components/TelemetryPanel";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import SituationalAssessmentChat from "@/components/SituationalAssessmentChat";
 import SoldierHomeView from "@/components/SoldierHomeView";
+import PeriodicTestView from "@/components/PeriodicTestView";
 import {
   ArrowLeft,
   Shield,
@@ -50,9 +51,11 @@ import {
   Heart,
   Sparkles,
   ShieldCheck,
+  Brain,
+  ClipboardList,
 } from "lucide-react";
 
-type TabKey = "home" | "overview" | "drivers" | "duty" | "history" | "self-assessment" | "support";
+type TabKey = "home" | "test" | "overview" | "drivers" | "duty" | "history" | "self-assessment" | "support";
 
 function PersonnelDetailContent() {
   const params = useParams();
@@ -73,11 +76,15 @@ function PersonnelDetailContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const tabParam = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["home", "overview", "drivers", "duty", "history", "self-assessment", "support"];
+  const isPersonnelRole = user?.role === "personnel";
+  const validTabs: TabKey[] = isPersonnelRole
+    ? ["home", "test", "overview", "duty", "history", "self-assessment", "support"]
+    : ["home", "test", "overview", "drivers", "duty", "history", "self-assessment", "support"];
+  
   const initialTab: TabKey =
     tabParam && validTabs.includes(tabParam)
       ? tabParam
-      : user?.role === "personnel"
+      : isPersonnelRole
       ? "home"
       : "overview";
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
@@ -100,10 +107,19 @@ function PersonnelDetailContent() {
   }, []);
 
   useEffect(() => {
-    if (tabParam && ["home", "overview", "drivers", "duty", "history", "self-assessment", "support"].includes(tabParam)) {
-      setActiveTab(tabParam as TabKey);
+    if (tabParam) {
+      const isPersonnel = user?.role === "personnel";
+      const allowed: TabKey[] = isPersonnel
+        ? ["home", "test", "overview", "duty", "history", "self-assessment", "support"]
+        : ["home", "test", "overview", "drivers", "duty", "history", "self-assessment", "support"];
+
+      if (allowed.includes(tabParam as TabKey)) {
+        setActiveTab(tabParam as TabKey);
+      } else if (isPersonnel && tabParam === "drivers") {
+        setActiveTab("home");
+      }
     }
-  }, [tabParam]);
+  }, [tabParam, user?.role]);
 
   const changeTab = (tab: TabKey) => {
     setActiveTab(tab);
@@ -433,6 +449,25 @@ function PersonnelDetailContent() {
 
             <button
               role="tab"
+              id="tab-test"
+              aria-selected={activeTab === "test"}
+              aria-controls="panel-test"
+              onClick={() => changeTab("test")}
+              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
+                activeTab === "test"
+                  ? "neu-btn-active text-amber-600"
+                  : "neu-btn text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5 text-amber-500" />
+              <span>Periodic Tests (PVT & WHO-5)</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                Weekly
+              </span>
+            </button>
+
+            <button
+              role="tab"
               id="tab-self-assessment"
               aria-selected={activeTab === "self-assessment"}
               aria-controls="panel-self-assessment"
@@ -515,6 +550,22 @@ function PersonnelDetailContent() {
 
             <button
               role="tab"
+              id="tab-test"
+              aria-selected={activeTab === "test"}
+              aria-controls="panel-test"
+              onClick={() => changeTab("test")}
+              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
+                activeTab === "test"
+                  ? "neu-btn-active text-amber-600"
+                  : "neu-btn text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5 text-amber-500" />
+              <span>Periodic Tests</span>
+            </button>
+
+            <button
+              role="tab"
               id="tab-drivers"
               aria-selected={activeTab === "drivers"}
               aria-controls="panel-drivers"
@@ -592,6 +643,13 @@ function PersonnelDetailContent() {
             dutyCount={roster ? roster.rows.filter(r => r.duty_type.toLowerCase().includes("duty") || (r.hours_worked || 0) > 0).length : 0}
             restCount={roster ? roster.rows.filter(r => r.is_rest_day === 1 || r.duty_type === "Rest Day").length : 0}
           />
+        </div>
+      )}
+
+      {/* PERIODIC TEST TAB (PVT & WHO-5) */}
+      {activeTab === "test" && (
+        <div id="panel-test" role="tabpanel" aria-labelledby="tab-test" className="space-y-6">
+          <PeriodicTestView personnelId={id} userName={user?.name} />
         </div>
       )}
 
@@ -777,8 +835,8 @@ function PersonnelDetailContent() {
         </div>
       )}
 
-      {/* 2. DRIVERS TAB */}
-      {activeTab === "drivers" && (
+      {/* 2. DRIVERS TAB (Suppressed for Personnel Role per PRD §8.1) */}
+      {user?.role !== "personnel" && activeTab === "drivers" && (
         <div id="panel-drivers" role="tabpanel" aria-labelledby="tab-drivers" className="space-y-6">
           {drivers && (
             <DriverBars
@@ -807,14 +865,6 @@ function PersonnelDetailContent() {
               roster={roster.rows}
               dailyAvailable={roster.daily_available}
               tier={profile.monitoring_tier}
-            />
-          )}
-
-          {telemetry && (
-            <TelemetryPanel
-              telemetry={telemetry.rows}
-              consentStatus={profile.device_consent_status}
-              isCohort={isCohort}
             />
           )}
         </div>

@@ -222,8 +222,36 @@ export default function SoldierHomeView({
         )}
       </div>
 
-      {/* 3. Three Welcoming Doorways (Main Actions) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 3. Welcoming Doorways (Main Actions) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Door 0: Periodic Wellness Tests (PVT & WHO-5) */}
+        <div className="neu-card p-5 flex flex-col justify-between space-y-4 hover:shadow-lg transition-all border-2 border-amber-500/30 bg-amber-50/20">
+          <div className="space-y-2">
+            <div className="w-10 h-10 rounded-xl neu-inset flex items-center justify-center text-amber-600 mb-1">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-slate-900">
+                Periodic Tests
+              </h3>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                1/wk Limit
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Take your weekly PVT reaction speed test or bi-weekly WHO-5 well-being check-in.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab("test")}
+            className="neu-btn-primary w-full py-2.5 px-3 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <span>Take Weekly Test</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
         {/* Door 1: AI Scenario Companion */}
         <div className="neu-card p-5 flex flex-col justify-between space-y-4 hover:shadow-lg transition-all">
           <div className="space-y-2">
@@ -234,13 +262,13 @@ export default function SoldierHomeView({
               Talk with AI Companion
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Explore friendly operational and daily life scenarios at your own pace. Confidential, interactive, and completely score-free.
+              Explore friendly operational and daily life scenarios at your own pace. Confidential & interactive.
             </p>
           </div>
           <button
             type="button"
             onClick={() => onNavigateTab("self-assessment")}
-            className="neu-btn-primary w-full py-2.5 px-3 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            className="neu-btn w-full py-2.5 px-3 text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5 cursor-pointer hover:text-blue-700"
           >
             <span>Start Scenario Chat</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -257,7 +285,7 @@ export default function SoldierHomeView({
               Duty and Rest Activity
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Check your 365-day shift register, upcoming rest cycles, leave balances, and recovery schedule at a glance.
+              Check your 365-day shift register, upcoming rest cycles, leave balances, and recovery schedule.
             </p>
           </div>
           <button
