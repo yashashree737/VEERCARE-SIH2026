@@ -99,9 +99,10 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
 }
 
 export const api = {
-  getSummary: (): Promise<SummaryResponse> => {
+  getSummary: (unit?: string): Promise<SummaryResponse> => {
     if (USE_SEED_MODE) return seedApi.getSummary();
-    return fetchJson<SummaryResponse>("/api/summary");
+    const qs = unit ? `?unit_id=${encodeURIComponent(unit)}` : "";
+    return fetchJson<SummaryResponse>(`/api/summary${qs}`);
   },
 
   getWatchlist: (params?: {
@@ -124,7 +125,7 @@ export const api = {
     if (params?.trend) q.set("trend", params.trend);
     if (params?.tier) q.set("tier", params.tier);
     if (params?.band) q.set("band", params.band);
-    if (params?.unit) q.set("unit", params.unit);
+    if (params?.unit) q.set("unit_id", params.unit);
     if (params?.flagged_only) q.set("flagged_only", "true");
     if (params?.alert_only) q.set("alert_only", "true");
     if (params?.min_risk !== undefined) q.set("min_risk", String(params.min_risk));
@@ -135,7 +136,7 @@ export const api = {
 
   getWall: (unit?: string): Promise<WallResponse> => {
     if (USE_SEED_MODE) return seedApi.getWall(unit);
-    const qs = unit ? `?unit=${encodeURIComponent(unit)}` : "";
+    const qs = unit ? `?unit_id=${encodeURIComponent(unit)}` : "";
     return fetchJson<WallResponse>(`/api/wall${qs}`);
   },
 

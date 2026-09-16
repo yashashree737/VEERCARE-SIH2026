@@ -153,7 +153,7 @@ function DashboardContent() {
         if (alertOnly) wlParams.alert_only = true;
 
         const [sumRes, wlRes, wallRes, casesRes] = await Promise.all([
-          api.getSummary(),
+          api.getSummary(effectiveUnit),
           api.getWatchlist(wlParams),
           api.getWall(effectiveUnit),
           api.getCaseNotes().catch(() => []),
@@ -428,11 +428,7 @@ function DashboardContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile
             label="Personnel Monitored"
-            value={
-              isCommander
-                ? watchlist.results.length
-                : summary.personnel_monitored.toLocaleString()
-            }
+            value={summary.personnel_monitored.toLocaleString()}
             subtext={
               isCommander
                 ? `Total personnel in Unit ${activeUnit} (Click to reset)`
