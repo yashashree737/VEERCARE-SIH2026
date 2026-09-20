@@ -76,17 +76,20 @@ function PersonnelDetailContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const tabParam = searchParams.get("tab") as TabKey | null;
-  const isPersonnelRole = user?.role === "personnel";
-  const validTabs: TabKey[] = isPersonnelRole
-    ? ["home", "test", "overview", "duty", "history", "self-assessment", "support"]
-    : ["home", "test", "overview", "drivers", "duty", "history", "self-assessment", "support"];
-  
+  const userRole = user?.role || "welfare";
+  const validTabs: TabKey[] =
+    userRole === "personnel"
+      ? ["home", "test", "self-assessment", "duty", "support", "overview"]
+      : userRole === "commander"
+        ? ["duty", "history"]
+        : userRole === "admin"
+          ? ["duty"]
+          : ["overview", "test", "drivers", "duty", "history", "self-assessment"];
+
   const initialTab: TabKey =
     tabParam && validTabs.includes(tabParam)
       ? tabParam
-      : isPersonnelRole
-      ? "home"
-      : "overview";
+      : validTabs[0] || "overview";
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
   const [showLogModal, setShowLogModal] = useState(false);
@@ -108,18 +111,13 @@ function PersonnelDetailContent() {
 
   useEffect(() => {
     if (tabParam) {
-      const isPersonnel = user?.role === "personnel";
-      const allowed: TabKey[] = isPersonnel
-        ? ["home", "test", "overview", "duty", "history", "self-assessment", "support"]
-        : ["home", "test", "overview", "drivers", "duty", "history", "self-assessment", "support"];
-
-      if (allowed.includes(tabParam as TabKey)) {
+      if (validTabs.includes(tabParam as TabKey)) {
         setActiveTab(tabParam as TabKey);
-      } else if (isPersonnel && tabParam === "drivers") {
-        setActiveTab("home");
+      } else {
+        setActiveTab(validTabs[0]);
       }
     }
-  }, [tabParam, user?.role]);
+  }, [tabParam, userRole]);
 
   const changeTab = (tab: TabKey) => {
     setActiveTab(tab);
@@ -235,9 +233,9 @@ function PersonnelDetailContent() {
       setHistory((prev) =>
         prev
           ? {
-              ...prev,
-              history: [newHistoryItem, ...prev.history],
-            }
+            ...prev,
+            history: [newHistoryItem, ...prev.history],
+          }
           : null
       );
 
@@ -285,10 +283,10 @@ function PersonnelDetailContent() {
             {isUnauth
               ? "Authentication Required"
               : isForbidden
-              ? "Access Restricted / Confidentiality Guard"
-              : isNotFound
-              ? "Personnel Record Not Found"
-              : "Unable to Load Personnel File"}
+                ? "Access Restricted / Confidentiality Guard"
+                : isNotFound
+                  ? "Personnel Record Not Found"
+                  : "Unable to Load Personnel File"}
           </h2>
 
           <p className="text-sm text-slate-700 leading-relaxed neu-inset p-3">
@@ -331,19 +329,6 @@ function PersonnelDetailContent() {
 
   return (
     <div className="space-y-6 pb-20 relative">
-      {/* Universal Dashboard Title */}
-      <div className="pt-2 pb-1">
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          {user?.name}&apos;s Dashboard
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          {user?.role === "admin" ? "System Administration & Evaluation" : 
-           user?.role === "commander" ? `Commanding Officer, Unit ${user?.unit_id || "U012"}` :
-           user?.role === "welfare" ? "Welfare Officer Clinical Scope" :
-           "Personnel Secure Portal"}
-        </p>
-      </div>
-
       {/* Top Breadcrumb */}
       <div className="flex items-center justify-between">
         {user?.role === "personnel" ? (
@@ -388,9 +373,15 @@ function PersonnelDetailContent() {
           </span>
 
           {user?.role === "personnel" ? (
-            <span className="text-xs font-semibold text-emerald-800 neu-card-flat px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-sm">
+            <span className="text-xs font-semibold text-emerald-800 neu-card-flat px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-xs">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               Private Wellness Space
+            </span>
+          ) : user?.role === "commander" || user?.role === "admin" ? (
+            /* SECURITY: Individual clinical risk scores & Z-scores hidden for Commander / HR role. True enforcement requires backend RBAC. */
+            <span className="text-xs font-semibold text-slate-700 neu-card-flat px-3 py-1 rounded-full border border-slate-300 flex items-center gap-1.5 shadow-xs">
+              <Shield className="w-3.5 h-3.5 text-slate-500" />
+              Restricted Duty Record (Operational Context Only)
             </span>
           ) : (
             <>
@@ -412,7 +403,7 @@ function PersonnelDetailContent() {
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>Confidential Jawan Space</span>
             </div>
-          ) : (
+          ) : user?.role === "welfare" || user?.role === "system" ? (
             <>
               <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-xl neu-inset text-xs text-slate-700">
                 <HeartHandshake className="w-3.5 h-3.5 text-blue-600" />
@@ -429,483 +420,545 @@ function PersonnelDetailContent() {
                 <span>Log Action</span>
               </button>
             </>
+          ) : (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-xl neu-inset text-xs text-slate-600">
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Clinical Log Restricted</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Tab Navigation Layout */}
-      <div
-        role="tablist"
-        aria-label="Personnel Profile Sections"
-        className="flex overflow-x-auto gap-2 border-b border-slate-200/80 pb-2 text-xs scrollbar-none"
-      >
-        {user?.role === "personnel" ? (
-          <>
-            <button
-              role="tab"
-              id="tab-home"
-              aria-selected={activeTab === "home"}
-              aria-controls="panel-home"
-              onClick={() => changeTab("home")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "home"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Home className="w-3.5 h-3.5" />
-              <span>Home</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
-                Welcome
-              </span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-test"
-              aria-selected={activeTab === "test"}
-              aria-controls="panel-test"
-              onClick={() => changeTab("test")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "test"
-                  ? "neu-btn-active text-amber-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5 text-amber-500" />
-              <span>Periodic Tests (PVT & WHO-5)</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-300">
-                Weekly
-              </span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-self-assessment"
-              aria-selected={activeTab === "self-assessment"}
-              aria-controls="panel-self-assessment"
-              onClick={() => changeTab("self-assessment")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "self-assessment"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>AI Scenario Chat</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-duty"
-              aria-selected={activeTab === "duty"}
-              aria-controls="panel-duty"
-              onClick={() => changeTab("duty")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "duty"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Duty & Rest Calendar</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-support"
-              aria-selected={activeTab === "support"}
-              aria-controls="panel-support"
-              onClick={() => changeTab("support")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "support"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span>Support & Helplines</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-overview"
-              aria-selected={activeTab === "overview"}
-              aria-controls="panel-overview"
-              onClick={() => changeTab("overview")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "overview"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Service Stats & Baseline</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              role="tab"
-              id="tab-overview"
-              aria-selected={activeTab === "overview"}
-              aria-controls="panel-overview"
-              onClick={() => changeTab("overview")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "overview"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Overview</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-test"
-              aria-selected={activeTab === "test"}
-              aria-controls="panel-test"
-              onClick={() => changeTab("test")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "test"
-                  ? "neu-btn-active text-amber-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5 text-amber-500" />
-              <span>Periodic Tests</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-drivers"
-              aria-selected={activeTab === "drivers"}
-              aria-controls="panel-drivers"
-              onClick={() => changeTab("drivers")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "drivers"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Risk Drivers</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-duty"
-              aria-selected={activeTab === "duty"}
-              aria-controls="panel-duty"
-              onClick={() => changeTab("duty")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "duty"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Duty & Telemetry</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-history"
-              aria-selected={activeTab === "history"}
-              aria-controls="panel-history"
-              onClick={() => changeTab("history")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "history"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>History Timeline</span>
-            </button>
-
-            <button
-              role="tab"
-              id="tab-self-assessment"
-              aria-selected={activeTab === "self-assessment"}
-              aria-controls="panel-self-assessment"
-              onClick={() => changeTab("self-assessment")}
-              className={`px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-2 ${
-                activeTab === "self-assessment"
-                  ? "neu-btn-active text-blue-600"
-                  : "neu-btn text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <HeartHandshake className="w-3.5 h-3.5" />
-              <span>Self-Assessment & Coping</span>
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Tab Panels */}
-      {/* 0. SOLDIER WELCOME HOME TAB */}
-      {activeTab === "home" && (
-        <div id="panel-home" role="tabpanel" aria-labelledby="tab-home" className="space-y-6">
-          <SoldierHomeView
-            profile={profile}
-            userName={user?.name}
-            onNavigateTab={(t) => changeTab(t as TabKey)}
-            deploymentZone={current.deployment_zone}
-            dutyCount={roster ? roster.rows.filter(r => r.duty_type.toLowerCase().includes("duty") || (r.hours_worked || 0) > 0).length : 0}
-            restCount={roster ? roster.rows.filter(r => r.is_rest_day === 1 || r.duty_type === "Rest Day").length : 0}
-          />
-        </div>
-      )}
-
-      {/* PERIODIC TEST TAB (PVT & WHO-5) */}
-      {activeTab === "test" && (
-        <div id="panel-test" role="tabpanel" aria-labelledby="tab-test" className="space-y-6">
-          <PeriodicTestView personnelId={id} userName={user?.name} />
-        </div>
-      )}
-
-      {/* SUPPORT & HELPLINES TAB */}
-      {activeTab === "support" && (
-        <div id="panel-support" role="tabpanel" aria-labelledby="tab-support" className="space-y-6">
-          <div className="neu-card p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl neu-inset flex items-center justify-center text-emerald-600">
-                  <PhoneCall className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    24/7 Confidential Jawan Support & Helplines
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Free, confidential, and judgment-free assistance for all Indian Armed Forces personnel and families.
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-emerald-800 neu-card-flat px-3 py-1 rounded-full border border-emerald-200 w-fit">
-                Toll-Free 24x7
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Card 1 */}
-              <div className="neu-card-flat p-5 space-y-3">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Direct National Hotline
-                </div>
-                <div className="text-xl font-extrabold text-blue-700 font-mono">
-                  1800-VEER-CARE
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  24x7 toll-free military mental health & welfare helpline. Speak with an army counselor in your preferred regional language.
-                </p>
-                <div className="text-[11px] text-emerald-700 font-medium pt-1">
-                  ✓ 100% Private · Zero Record in ACR
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="neu-card-flat p-5 space-y-3">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Unit Welfare Officer
-                </div>
-                <div className="text-lg font-bold text-slate-900">
-                  WO-{profile.home_unit_id} Dispatch
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Confidential welfare liaison assigned to {profile.home_unit_id}. Assistance with leave requests, family medical aid, and shift adjustments.
-                </p>
-                <div className="text-[11px] text-indigo-700 font-medium pt-1">
-                  ✓ Unit Welfare Assistance
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="neu-card-flat p-5 space-y-3">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Peer Support Jawan
-                </div>
-                <div className="text-lg font-bold text-slate-900">
-                  Buddy Check Network
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Trained peer comrades who listen without ranking barriers. Perfect for talking through post fatigue, high altitude stress, or family worries.
-                </p>
-                <div className="text-[11px] text-amber-800 font-medium pt-1">
-                  ✓ Brother-to-Brother Comrade Support
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl neu-inset space-y-2 text-xs text-slate-700">
-              <p className="font-bold text-slate-900 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                VeerCare Strict Confidentiality Guarantee
-              </p>
-              <p className="leading-relaxed">
-                Per Indian Armed Forces Health and Welfare Guidelines, seeking guidance or speaking with counselors is a sign of operational strength and personal responsibility. Your interactions, self-checks, and calls are strictly private and are never disclosed in Annual Confidential Reports (ACR), promotion rosters, or leadership dossiers.
-              </p>
-            </div>
+      {/* Two-Column Sidebar + Content Layout */}
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <nav
+          role="tablist"
+          aria-label="Personnel Profile Navigation"
+          className="w-full md:w-60 md:shrink-0 md:sticky md:top-36 md:self-start neu-card p-3 space-y-1.5 z-10"
+        >
+          <div className="text-metadata font-bold text-slate-600 uppercase tracking-wider px-3 py-1.5 hidden md:block border-b border-slate-200/80 mb-2">
+            Sections
           </div>
-        </div>
-      )}
 
-      {/* 1. OVERVIEW TAB */}
-      {activeTab === "overview" && (
-        <div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" className="space-y-6">
-          <BaselineChart
-            series={series}
-            baseline={baseline}
-            projectedNext={projected_next}
-          />
+          <div className="flex flex-wrap md:flex-col gap-1.5">
+            {user?.role === "personnel" ? (
+              <>
+                <button
+                  role="tab"
+                  id="tab-home"
+                  aria-selected={activeTab === "home"}
+                  aria-controls="panel-home"
+                  onClick={() => changeTab("home")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between gap-2 ${activeTab === "home"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Home className="w-4 h-4 text-blue-600" />
+                    <span>Home</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                    Welcome
+                  </span>
+                </button>
 
-          {breakdown && <StrainBreakdown breakdown={breakdown} />}
+                <button
+                  role="tab"
+                  id="tab-test"
+                  aria-selected={activeTab === "test"}
+                  aria-controls="panel-test"
+                  onClick={() => changeTab("test")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between gap-2 ${activeTab === "test"
+                      ? "neu-btn-active text-amber-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-amber-500" />
+                    <span>Periodic Tests</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                    Weekly
+                  </span>
+                </button>
 
-          {/* Recommended Action Card */}
-          <div className="neu-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
-                <HeartHandshake className="w-4 h-4" />
-                Triage Recommendation Engine
-              </span>
-              <h3 className="text-xl font-bold text-slate-900">
-                {current.intervention_recommended}
-              </h3>
-              <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-                Synthesized from current strain band ({current.strain_band}), personal baseline deviation (z = {current.strain_z_from_baseline.toFixed(2)}σ), and predictive incident risk probability ({(current.risk_probability * 100).toFixed(1)}%).
-              </p>
-            </div>
+                <button
+                  role="tab"
+                  id="tab-self-assessment"
+                  aria-selected={activeTab === "self-assessment"}
+                  aria-controls="panel-self-assessment"
+                  onClick={() => changeTab("self-assessment")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "self-assessment"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <span>AI Scenario Chat</span>
+                </button>
 
-            {user?.role !== "personnel" && (
-              <button
-                onClick={() => setShowLogModal(true)}
-                className="neu-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold shrink-0"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Log Action Now</span>
-              </button>
+                <button
+                  role="tab"
+                  id="tab-duty"
+                  aria-selected={activeTab === "duty"}
+                  aria-controls="panel-duty"
+                  onClick={() => changeTab("duty")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <span>Duty & Rest Calendar</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-support"
+                  aria-selected={activeTab === "support"}
+                  aria-controls="panel-support"
+                  onClick={() => changeTab("support")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "support"
+                      ? "neu-btn-active text-emerald-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <PhoneCall className="w-4 h-4 text-emerald-500" />
+                  <span>Support & Helplines</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-overview"
+                  aria-selected={activeTab === "overview"}
+                  aria-controls="panel-overview"
+                  onClick={() => changeTab("overview")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "overview"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  <span>Service Stats & Baseline</span>
+                </button>
+              </>
+            ) : user?.role === "commander" ? (
+              /* SECURITY: Commander role gets Duty & Calendar + History Timeline only per Section 0 matrix */
+              <>
+                <button
+                  role="tab"
+                  id="tab-duty"
+                  aria-selected={activeTab === "duty"}
+                  aria-controls="panel-duty"
+                  onClick={() => changeTab("duty")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <span>Duty & Calendar</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-history"
+                  aria-selected={activeTab === "history"}
+                  aria-controls="panel-history"
+                  onClick={() => changeTab("history")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "history"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <History className="w-4 h-4 text-slate-600" />
+                  <span>History Timeline</span>
+                </button>
+              </>
+            ) : user?.role === "admin" ? (
+              /* SECURITY: HR (admin) role gets Duty & Calendar only per Section 0 matrix */
+              <>
+                <button
+                  role="tab"
+                  id="tab-duty"
+                  aria-selected={activeTab === "duty"}
+                  aria-controls="panel-duty"
+                  onClick={() => changeTab("duty")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <span>Duty & Calendar</span>
+                </button>
+              </>
+            ) : (
+              /* Welfare / System Officer tabs */
+              <>
+                <button
+                  role="tab"
+                  id="tab-overview"
+                  aria-selected={activeTab === "overview"}
+                  aria-controls="panel-overview"
+                  onClick={() => changeTab("overview")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "overview"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  <span>Overview</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-test"
+                  aria-selected={activeTab === "test"}
+                  aria-controls="panel-test"
+                  onClick={() => changeTab("test")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "test"
+                      ? "neu-btn-active text-amber-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Brain className="w-4 h-4 text-amber-500" />
+                  <span>Periodic Tests</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-drivers"
+                  aria-selected={activeTab === "drivers"}
+                  aria-controls="panel-drivers"
+                  onClick={() => changeTab("drivers")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "drivers"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Sliders className="w-4 h-4 text-slate-600" />
+                  <span>Risk Drivers</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-duty"
+                  aria-selected={activeTab === "duty"}
+                  aria-controls="panel-duty"
+                  onClick={() => changeTab("duty")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <span>Duty & Telemetry</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-history"
+                  aria-selected={activeTab === "history"}
+                  aria-controls="panel-history"
+                  onClick={() => changeTab("history")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "history"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <History className="w-4 h-4 text-slate-600" />
+                  <span>History Timeline</span>
+                </button>
+
+                <button
+                  role="tab"
+                  id="tab-self-assessment"
+                  aria-selected={activeTab === "self-assessment"}
+                  aria-controls="panel-self-assessment"
+                  onClick={() => changeTab("self-assessment")}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "self-assessment"
+                      ? "neu-btn-active text-blue-600"
+                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    }`}
+                >
+                  <HeartHandshake className="w-4 h-4 text-blue-600" />
+                  <span>Self-Assessment & Coping</span>
+                </button>
+              </>
             )}
           </div>
+        </nav>
 
-          {/* Soldier Data & Consent Transparency Panel */}
-          {user?.role === "personnel" && (
-            <div className="neu-card p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-emerald-600" />
-                  <h3 className="text-base font-bold text-slate-900">Your Data, Privacy & Consent Transparency</h3>
-                </div>
-                <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full neu-card-flat text-emerald-800 border border-emerald-200">
-                  Protected Self-Service
-                </span>
-              </div>
+        {/* Right Content Panel */}
+        <div className="flex-1 min-w-0 w-full">
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                    What Your Unit Commander Sees:
+          {/* Tab Panels */}
+          {/* 0. SOLDIER WELCOME HOME TAB */}
+          {activeTab === "home" && (
+            <div id="panel-home" role="tabpanel" aria-labelledby="tab-home" className="space-y-6">
+              <SoldierHomeView
+                profile={profile}
+                userName={user?.name}
+                onNavigateTab={(t) => changeTab(t as TabKey)}
+                deploymentZone={current.deployment_zone}
+                dutyCount={roster ? roster.rows.filter(r => r.duty_type.toLowerCase().includes("duty") || (r.hours_worked || 0) > 0).length : 0}
+                restCount={roster ? roster.rows.filter(r => r.is_rest_day === 1 || r.duty_type === "Rest Day").length : 0}
+              />
+            </div>
+          )}
+
+          {/* PERIODIC TEST TAB (PVT & WHO-5) */}
+          {activeTab === "test" && (
+            <div id="panel-test" role="tabpanel" aria-labelledby="tab-test" className="space-y-6">
+              <PeriodicTestView personnelId={id} userName={user?.name} />
+            </div>
+          )}
+
+          {/* SUPPORT & HELPLINES TAB */}
+          {activeTab === "support" && (
+            <div id="panel-support" role="tabpanel" aria-labelledby="tab-support" className="space-y-6">
+              <div className="neu-card p-6 sm:p-8 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl neu-inset flex items-center justify-center text-emerald-600">
+                      <PhoneCall className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        24/7 Confidential Jawan Support & Helplines
+                      </h3>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Free, confidential, and judgment-free assistance for all Indian Armed Forces personnel and families.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    Unit operational readiness, attendance, and aggregated roster duty hours. Commanders cannot view private coping dialogue, clinical assessments, or peer discussions.
+                  <span className="text-xs font-semibold text-emerald-800 neu-card-flat px-3 py-1 rounded-full border border-emerald-200 w-fit">
+                    Toll-Free 24x7
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Card 1 */}
+                  <div className="neu-card-flat p-5 space-y-3">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Direct National Hotline
+                    </div>
+                    <div className="text-xl font-extrabold text-blue-700 font-mono">
+                      1800-VEER-CARE
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      24x7 toll-free military mental health & welfare helpline. Speak with an army counselor in your preferred regional language.
+                    </p>
+                    <div className="text-[11px] text-emerald-700 font-medium pt-1">
+                      ✓ 100% Private · Zero Record in ACR
+                    </div>
+                  </div>
+
+                  {/* Card 2 */}
+                  <div className="neu-card-flat p-5 space-y-3">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Unit Welfare Officer
+                    </div>
+                    <div className="text-lg font-bold text-slate-900">
+                      WO-{profile.home_unit_id} Dispatch
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Confidential welfare liaison assigned to {profile.home_unit_id}. Assistance with leave requests, family medical aid, and shift adjustments.
+                    </p>
+                    <div className="text-[11px] text-indigo-700 font-medium pt-1">
+                      ✓ Unit Welfare Assistance
+                    </div>
+                  </div>
+
+                  {/* Card 3 */}
+                  <div className="neu-card-flat p-5 space-y-3">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Peer Support Jawan
+                    </div>
+                    <div className="text-lg font-bold text-slate-900">
+                      Buddy Check Network
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Trained peer comrades who listen without ranking barriers. Perfect for talking through post fatigue, high altitude stress, or family worries.
+                    </p>
+                    <div className="text-[11px] text-amber-800 font-medium pt-1">
+                      ✓ Brother-to-Brother Comrade Support
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl neu-inset space-y-2 text-xs text-slate-700">
+                  <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    VeerCare Strict Confidentiality Guarantee
                   </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <HeartHandshake className="w-3.5 h-3.5 text-blue-600" />
-                    What The Welfare Officer Sees:
-                  </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    Welfare officers only access records when risk deviations trigger triage watchlists. Routine healthy duty records are shielded by default.
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-amber-600" />
-                    Wearable Device Pilot Status:
-                  </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    Status: <strong className="text-slate-900">{profile.device_consent_status}</strong>. Sensor streams from the 24-volunteer pilot are strictly excluded from predictive strain scoring.
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-rose-600" />
-                    Record Confidentiality Mode:
-                  </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    Status: <strong className="text-slate-900">{record_restricted ? "Active Restricted Mode" : "Standard Force Triage"}</strong>. To request adjustments to sharing preferences, contact your Unit Welfare Cell.
+                  <p className="leading-relaxed">
+                    Per Indian Armed Forces Health and Welfare Guidelines, seeking guidance or speaking with counselors is a sign of operational strength and personal responsibility. Your interactions, self-checks, and calls are strictly private and are never disclosed in Annual Confidential Reports (ACR), promotion rosters, or leadership dossiers.
                   </p>
                 </div>
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* 2. DRIVERS TAB (Suppressed for Personnel Role per PRD §8.1) */}
-      {user?.role !== "personnel" && activeTab === "drivers" && (
-        <div id="panel-drivers" role="tabpanel" aria-labelledby="tab-drivers" className="space-y-6">
-          {drivers && (
-            <DriverBars
-              drivers={drivers.drivers}
-              recordRestricted={record_restricted}
-            />
+          {/* 1. OVERVIEW TAB */}
+          {activeTab === "overview" && (
+            <div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" className="space-y-6">
+              <BaselineChart
+                series={series}
+                baseline={baseline}
+                projectedNext={projected_next}
+              />
+
+              {breakdown && <StrainBreakdown breakdown={breakdown} />}
+
+              {/* Recommended Action Card */}
+              <div className="neu-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                    <HeartHandshake className="w-4 h-4" />
+                    Triage Recommendation Engine
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {current.intervention_recommended}
+                  </h3>
+                  <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
+                    Synthesized from current strain band ({current.strain_band}), personal baseline deviation (z = {current.strain_z_from_baseline.toFixed(2)}σ), and predictive incident risk probability ({(current.risk_probability * 100).toFixed(1)}%).
+                  </p>
+                </div>
+
+                {user?.role !== "personnel" && (
+                  <button
+                    onClick={() => setShowLogModal(true)}
+                    className="neu-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold shrink-0"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Log Action Now</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Soldier Data & Consent Transparency Panel */}
+              {user?.role === "personnel" && (
+                <div className="neu-card p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-emerald-600" />
+                      <h3 className="text-base font-bold text-slate-900">Your Data, Privacy & Consent Transparency</h3>
+                    </div>
+                    <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full neu-card-flat text-emerald-800 border border-emerald-200">
+                      Protected Self-Service
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                        What Your Unit Commander Sees:
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">
+                        Unit operational readiness, attendance, and aggregated roster duty hours. Commanders cannot view private coping dialogue, clinical assessments, or peer discussions.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <HeartHandshake className="w-3.5 h-3.5 text-blue-600" />
+                        What The Welfare Officer Sees:
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">
+                        Welfare officers only access records when risk deviations trigger triage watchlists. Routine healthy duty records are shielded by default.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-amber-600" />
+                        Wearable Device Pilot Status:
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">
+                        Status: <strong className="text-slate-900">{profile.device_consent_status}</strong>. Sensor streams from the 24-volunteer pilot are strictly excluded from predictive strain scoring.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl neu-card-flat space-y-1.5">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-rose-600" />
+                        Record Confidentiality Mode:
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">
+                        Status: <strong className="text-slate-900">{record_restricted ? "Active Restricted Mode" : "Standard Force Triage"}</strong>. To request adjustments to sharing preferences, contact your Unit Welfare Cell.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
-          <div className="neu-card p-5 text-xs space-y-2 text-slate-600">
-            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Info className="w-4 h-4 text-blue-600" />
-              About ML Welfare Attribution
-            </h4>
-            <p className="leading-relaxed">
-              Drivers are sign-normalised feature deviations derived from XGBoost gradient boosting trees trained over 2,000 anonymised personnel duty profiles. Features identify which specific physiological, duty load, or recovery variances pushed this individual&apos;s risk probability above their historical baseline.
-            </p>
-          </div>
-        </div>
-      )}
+          {/* 2. DRIVERS TAB (Suppressed for Personnel Role per PRD §8.1) */}
+          {user?.role !== "personnel" && activeTab === "drivers" && (
+            <div id="panel-drivers" role="tabpanel" aria-labelledby="tab-drivers" className="space-y-6">
+              {drivers && (
+                <DriverBars
+                  drivers={drivers.drivers}
+                  recordRestricted={record_restricted}
+                />
+              )}
 
-      {/* 3. DUTY & TELEMETRY TAB */}
-      {activeTab === "duty" && (
-        <div id="panel-duty" role="tabpanel" aria-labelledby="tab-duty" className="space-y-6">
-          {roster && (
-            <DutyCalendar
-              roster={roster.rows}
-              dailyAvailable={roster.daily_available}
-              tier={profile.monitoring_tier}
-            />
+              <div className="neu-card p-5 text-xs space-y-2 text-slate-600">
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  About ML Welfare Attribution
+                </h4>
+                <p className="leading-relaxed">
+                  Drivers are sign-normalised feature deviations derived from XGBoost gradient boosting trees trained over 2,000 anonymised personnel duty profiles. Features identify which specific physiological, duty load, or recovery variances pushed this individual&apos;s risk probability above their historical baseline.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 3. DUTY & TELEMETRY TAB */}
+          {activeTab === "duty" && (
+            <div id="panel-duty" role="tabpanel" aria-labelledby="tab-duty" className="space-y-6">
+              {roster && (
+                <DutyCalendar
+                  roster={roster.rows}
+                  dailyAvailable={roster.daily_available}
+                  tier={profile.monitoring_tier}
+                />
+              )}
+            </div>
+          )}
+
+          {/* 4. HISTORY TAB */}
+          {activeTab === "history" && (
+            <div id="panel-history" role="tabpanel" aria-labelledby="tab-history" className="space-y-6">
+              {history && (
+                <HistoryTimeline
+                  history={history.history}
+                  recordRestricted={record_restricted}
+                  highlightFirst={justLogged}
+                />
+              )}
+            </div>
+          )}
+
+          {/* 5. SELF-ASSESSMENT TAB */}
+          {activeTab === "self-assessment" && (
+            <div id="panel-self-assessment" role="tabpanel" aria-labelledby="tab-self-assessment" className="space-y-6">
+              <SituationalAssessmentChat
+                personnelId={id}
+                rank={profile.rank}
+                readOnly={user?.role === "commander" && user?.personnel_id !== id}
+              />
+            </div>
           )}
         </div>
-      )}
-
-      {/* 4. HISTORY TAB */}
-      {activeTab === "history" && (
-        <div id="panel-history" role="tabpanel" aria-labelledby="tab-history" className="space-y-6">
-          {history && (
-            <HistoryTimeline
-              history={history.history}
-              recordRestricted={record_restricted}
-              highlightFirst={justLogged}
-            />
-          )}
-        </div>
-      )}
-
-      {/* 5. SELF-ASSESSMENT TAB */}
-      {activeTab === "self-assessment" && (
-        <div id="panel-self-assessment" role="tabpanel" aria-labelledby="tab-self-assessment" className="space-y-6">
-          <SituationalAssessmentChat
-            personnelId={id}
-            rank={profile.rank}
-            readOnly={user?.role === "commander" && user?.personnel_id !== id}
-          />
-        </div>
-      )}
+      </div>
 
       {/* Modal Dialog */}
       {showLogModal && mounted && createPortal(

@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import AppHeader from "@/components/AppHeader";
+import VoiceAgent from "@/components/VoiceAgent";
 import { AuthProvider } from "@/lib/auth";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "VeerCare — Personnel Stress & Welfare Monitoring System",
@@ -25,13 +33,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-[#f0f3f8] text-slate-800 selection:bg-blue-600 selection:text-white">
+    <html lang="en" className={`h-full antialiased ${manrope.variable}`}>
+      <body className="min-h-full flex flex-col bg-[#f0f3f8] text-slate-800 selection:bg-blue-600 selection:text-white font-sans">
         <AuthProvider>
           <AppHeader />
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
           </main>
+          <VoiceAgent />
         </AuthProvider>
       </body>
     </html>
