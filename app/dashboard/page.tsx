@@ -50,7 +50,19 @@ function DashboardContent() {
   const [selectedTrend, setSelectedTrend] = useState(urlTrend);
   const [alertOnly, setAlertOnly] = useState(urlAlert);
   const [searchTerm, setSearchTerm] = useState(urlSearch);
-  const [limit, setLimit] = useState(50);
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const [page, setPage] = useState(urlPage);
+  const limit = 10;
+  
+  const urlSortKey = searchParams.get("sortKey") || "risk";
+  const urlSortDir = (searchParams.get("sortDir") as "asc" | "desc") || "desc";
+  const [sortKey, setSortKey] = useState(urlSortKey);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(urlSortDir);
+
+  const urlWallPage = parseInt(searchParams.get("wallPage") || "1", 10);
+  const [wallPage, setWallPage] = useState(urlWallPage);
+  const urlWallSortKey = searchParams.get("wallSortKey") || "risk";
+  const [wallSortKey, setWallSortKey] = useState(urlWallSortKey);
 
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
@@ -100,7 +112,9 @@ function DashboardContent() {
 
   const handleSearchChange = (q: string) => {
     setSearchTerm(q);
-    updateUrlParams({ search: q || null });
+    setPage(1);
+    setWallPage(1);
+    updateUrlParams({ search: q || null, page: "1", wallPage: "1" });
   };
 
   const handleClearFilters = () => {
@@ -109,7 +123,39 @@ function DashboardContent() {
     setSelectedTrend("");
     setAlertOnly(false);
     setSearchTerm("");
-    updateUrlParams({ zone: null, band: null, trend: null, alert: null, search: null });
+    setSortKey("risk");
+    setSortDirection("desc");
+    setPage(1);
+    setWallPage(1);
+    setWallSortKey("risk");
+    updateUrlParams({ zone: null, band: null, trend: null, alert: null, search: null, page: null, sortKey: null, sortDir: null, wallPage: null, wallSortKey: null });
+  };
+
+  const handleSortChange = (key: string) => {
+    let dir: "asc" | "desc" = "desc";
+    if (sortKey === key) {
+      dir = sortDirection === "asc" ? "desc" : "asc";
+    }
+    setSortKey(key);
+    setSortDirection(dir);
+    setPage(1);
+    updateUrlParams({ sortKey: key, sortDir: dir, page: "1" });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrlParams({ page: newPage.toString() });
+  };
+
+  const handleWallSortChange = (key: string) => {
+    setWallSortKey(key);
+    setWallPage(1);
+    updateUrlParams({ wallSortKey: key, wallPage: "1" });
+  };
+
+  const handleWallPageChange = (newPage: number) => {
+    setWallPage(newPage);
+    updateUrlParams({ wallPage: newPage.toString() });
   };
 
   const handleKpiOfConcernClick = () => {
@@ -138,11 +184,12 @@ function DashboardContent() {
         const effectiveRole = user?.role || "admin";
         const isCommander = effectiveRole === "commander";
         const isWelfare = effectiveRole === "welfare" || effectiveRole === "system";
-        
+
         const effectiveUnit = isCommander ? (user?.unit_id || "U012") : (urlUnit || undefined);
 
         const wlParams: any = {
           limit,
+          page,
           unit: effectiveUnit,
           flagged_only: isWelfare || urlScope === "flagged",
         };
@@ -151,11 +198,27 @@ function DashboardContent() {
         if (selectedBand) wlParams.band = selectedBand;
         if (selectedTrend) wlParams.trend = selectedTrend;
         if (alertOnly) wlParams.alert_only = true;
+        if (searchTerm) wlParams.search = searchTerm;
+        wlParams.sort_key = sortKey;
+        wlParams.sort_direction = sortDirection;
+
+        const wallParams: any = {
+          limit,
+          page: wallPage,
+          unit: effectiveUnit,
+          sort_key: wallSortKey,
+          sort_direction: "desc", // Defaulting wall to desc
+        };
+        if (selectedZone) wallParams.zone = selectedZone;
+        if (selectedBand) wallParams.band = selectedBand;
+        if (selectedTrend) wallParams.trend = selectedTrend;
+        if (alertOnly) wallParams.alert_only = true;
+        if (searchTerm) wallParams.search = searchTerm;
 
         const [sumRes, wlRes, wallRes, casesRes] = await Promise.all([
           api.getSummary(effectiveUnit),
           api.getWatchlist(wlParams),
-          api.getWall(effectiveUnit),
+          api.getWall(wallParams),
           api.getCaseNotes().catch(() => []),
         ]);
 
@@ -172,11 +235,11 @@ function DashboardContent() {
         if (err instanceof ApiError) {
           setError({
             status: err.status,
-            message: err.status === 403 
+            message: err.status === 403
               ? "You do not have authorization to view this unit's operational data."
               : err.status === 401
-              ? "Your session has expired. Please authenticate again."
-              : "Unable to connect to the force analytics service.",
+                ? "Your session has expired. Please authenticate again."
+                : "Unable to connect to the force analytics service.",
             detail: err.detail,
           });
         } else {
@@ -190,7 +253,7 @@ function DashboardContent() {
         setIsRefreshing(false);
       }
     },
-    [user, urlUnit, urlScope, limit, selectedZone, selectedBand, selectedTrend, alertOnly, summary]
+    [user, urlUnit, urlScope, limit, page, wallPage, selectedZone, selectedBand, selectedTrend, alertOnly, searchTerm, sortKey, sortDirection, wallSortKey, summary, updateUrlParams]
   );
 
   useEffect(() => {
@@ -200,7 +263,7 @@ function DashboardContent() {
       return;
     }
     loadData();
-  }, [isAuthLoading, isAuthenticated, user?.role, user?.unit_id, urlUnit, urlScope, limit, selectedZone, selectedBand, selectedTrend, alertOnly]);
+  }, [isAuthLoading, isAuthenticated, user?.role, user?.unit_id, urlUnit, urlScope, limit, page, wallPage, selectedZone, selectedBand, selectedTrend, alertOnly, searchTerm, sortKey, sortDirection, wallSortKey]);
 
   if (isAuthLoading) {
     return (
@@ -278,7 +341,7 @@ function DashboardContent() {
             {isForbidden ? "Command Access Restricted" : isUnauth ? "Session Expired" : "Failed to Connect to Analytics Service"}
           </h3>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">{error.message}</p>
-          
+
           {error.detail && (
             <details className="text-left neu-inset p-3 text-xs text-slate-700 font-mono">
               <summary className="cursor-pointer text-slate-500 hover:text-slate-800 font-sans font-medium mb-1">
@@ -345,10 +408,10 @@ function DashboardContent() {
           {user?.name}&apos;s Dashboard
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          {userRole === "admin" ? "System Administration & Evaluation" : 
-           isCommander ? `Commanding Officer, Unit ${activeUnit}` :
-           userRole === "welfare" ? "Welfare Officer Clinical Scope" :
-           "Personnel Secure Portal"}
+          {userRole === "admin" ? "System Administration & Evaluation" :
+            isCommander ? `Commanding Officer, Unit ${activeUnit}` :
+              userRole === "welfare" ? "Welfare Officer Clinical Scope" :
+                "Personnel Secure Portal"}
         </p>
       </div>
 
@@ -498,17 +561,32 @@ function DashboardContent() {
           onAlertOnlyChange={handleAlertOnlyChange}
           onClearFilters={handleClearFilters}
           isLoading={isRefreshing}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
         />
 
-        {/* Load More Pagination Affordance */}
-        {watchlist.results.length < watchlist.count && (
-          <div className="text-center pt-2">
+        {/* Pagination Controls */}
+        {watchlist && watchlist.count > limit && (
+          <div className="flex justify-center items-center gap-4 pt-4">
             <button
               type="button"
-              onClick={() => setLimit((prev) => prev + 50)}
-              className="neu-btn px-5 py-2 font-semibold text-slate-800 hover:text-blue-600 text-xs sm:text-sm shadow-md"
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
             >
-              Load more personnel (+50)
+              Previous
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Page {page} of {Math.ceil(watchlist.count / limit)}
+            </span>
+            <button
+              type="button"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= Math.ceil(watchlist.count / limit)}
+              className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Next
             </button>
           </div>
         )}
@@ -535,7 +613,15 @@ function DashboardContent() {
         </div>
 
         {/* Unit Wall Grid */}
-        <UnitWall cards={wall.results} />
+        <UnitWall 
+          cards={wall.results} 
+          totalCount={wall.count}
+          sortKey={wallSortKey}
+          onSortChange={handleWallSortChange}
+          page={wallPage}
+          onPageChange={handleWallPageChange}
+          limit={limit}
+        />
       </section>
 
       {/* Case Walkthroughs */}

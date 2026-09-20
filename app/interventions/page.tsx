@@ -44,10 +44,13 @@ function InterventionsContent() {
   const [sortDir, setSortDir] = useState<SortDir>(
     (searchParams.get("sortDir") as SortDir) || "desc"
   );
-  const [displayLimit, setDisplayLimit] = useState(100);
+  
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const [page, setPage] = useState(urlPage);
+  const limit = 10;
 
   const syncToUrl = useCallback(
-    (s: string, t: string, eff: string, sf: SortField | null, sd: SortDir) => {
+    (s: string, t: string, eff: string, sf: SortField | null, sd: SortDir, p: number) => {
       const sp = new URLSearchParams();
       if (s) sp.set("search", s);
       if (t) sp.set("type", t);
@@ -56,6 +59,7 @@ function InterventionsContent() {
         sp.set("sortBy", sf);
         sp.set("sortDir", sd);
       }
+      if (p > 1) sp.set("page", String(p));
       const qs = sp.toString();
       router.replace(`/interventions${qs ? `?${qs}` : ""}`);
     },
@@ -64,17 +68,20 @@ function InterventionsContent() {
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
-    syncToUrl(val, typeFilter, effectiveFilter, sortField, sortDir);
+    setPage(1);
+    syncToUrl(val, typeFilter, effectiveFilter, sortField, sortDir, 1);
   };
 
   const handleTypeChange = (val: string) => {
     setTypeFilter(val);
-    syncToUrl(search, val, effectiveFilter, sortField, sortDir);
+    setPage(1);
+    syncToUrl(search, val, effectiveFilter, sortField, sortDir, 1);
   };
 
   const handleEffectiveChange = (val: string) => {
     setEffectiveFilter(val);
-    syncToUrl(search, typeFilter, val, sortField, sortDir);
+    setPage(1);
+    syncToUrl(search, typeFilter, val, sortField, sortDir, 1);
   };
 
   const handleSort = (field: SortField) => {
@@ -92,7 +99,8 @@ function InterventionsContent() {
 
     setSortField(nextField);
     setSortDir(nextDir);
-    syncToUrl(search, typeFilter, effectiveFilter, nextField, nextDir);
+    setPage(1);
+    syncToUrl(search, typeFilter, effectiveFilter, nextField, nextDir, 1);
   };
 
   const clearFilters = () => {
@@ -101,15 +109,29 @@ function InterventionsContent() {
     setEffectiveFilter("");
     setSortField(null);
     setSortDir("desc");
-    syncToUrl("", "", "", null, "desc");
+    setPage(1);
+    syncToUrl("", "", "", null, "desc", 1);
   };
 
-  const loadData = async () => {
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    syncToUrl(search, typeFilter, effectiveFilter, sortField, sortDir, newPage);
+  };
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setErrorStatus(null);
       setErrorMessage(null);
-      const res = await api.getInterventions();
+      const res = await api.getInterventions({
+        page,
+        limit,
+        search,
+        type: typeFilter,
+        outcome: effectiveFilter,
+        sort_key: sortField || undefined,
+        sort_direction: sortDir,
+      });
       setData(res);
       setLastUpdated(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     } catch (err: any) {
@@ -124,59 +146,21 @@ function InterventionsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, search, typeFilter, effectiveFilter, sortField, sortDir]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const types = useMemo(() => {
     if (!data) return [];
     return Array.from(new Set(data.results.map((r) => r.intervention_type))).sort();
   }, [data]);
 
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    let list = data.results.filter((item) => {
-      if (search) {
-        const q = search.toLowerCase();
-        if (!item.personnel_id.toLowerCase().includes(q)) {
-          return false;
-        }
-      }
-      if (typeFilter && item.intervention_type !== typeFilter) {
-        return false;
-      }
-      if (effectiveFilter) {
-        if (effectiveFilter === "effective" && item.outcome_effective !== 1) return false;
-        if (effectiveFilter === "no_change" && item.outcome_effective !== 0) return false;
-        if (effectiveFilter === "in_progress" && item.outcome_effective !== null) return false;
-      }
-      return true;
-    });
-
-    if (sortField) {
-      list = [...list].sort((a, b) => {
-        let valA: any = a[sortField];
-        let valB: any = b[sortField];
-
-        if (valA === null || valA === undefined) return 1;
-        if (valB === null || valB === undefined) return -1;
-
-        if (typeof valA === "string") {
-          const cmp = valA.localeCompare(valB);
-          return sortDir === "asc" ? cmp : -cmp;
-        }
-
-        return sortDir === "asc" ? valA - valB : valB - valA;
-      });
-    }
-
-    return list;
-  }, [data, search, typeFilter, effectiveFilter, sortField, sortDir]);
+  const visibleRows = data?.results || [];
 
   const handleExportCSV = () => {
-    if (!filtered || filtered.length === 0) return;
+    if (!data || visibleRows.length === 0) return;
 
     const headers = [
       "Intervention ID",
@@ -192,7 +176,7 @@ function InterventionsContent() {
       "Outcome Status",
     ];
 
-    const rows = filtered.map((r) => [
+    const rows = visibleRows.map((r) => [
       r.intervention_id,
       r.action_date,
       r.personnel_id,
@@ -266,7 +250,6 @@ function InterventionsContent() {
   }
 
   const effPct = (data.headline_effectiveness * 100).toFixed(1);
-  const visibleRows = filtered.slice(0, displayLimit);
 
   return (
     <div className="space-y-6 pb-16">
@@ -315,11 +298,11 @@ function InterventionsContent() {
 
             <button
               onClick={handleExportCSV}
-              disabled={filtered.length === 0}
+              disabled={visibleRows.length === 0}
               className="neu-btn inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-800 hover:text-blue-600 disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export CSV ({filtered.length})</span>
+              <span>Export CSV ({data.count})</span>
             </button>
           </div>
         </div>
@@ -353,12 +336,7 @@ function InterventionsContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="text-xs text-slate-600">
             Showing <strong className="text-slate-900 font-mono font-bold">{visibleRows.length}</strong> of{" "}
-            <strong className="text-slate-900 font-mono font-bold">{filtered.length}</strong> matching actions
-            {filtered.length > displayLimit && (
-              <span className="text-amber-800 ml-1.5 font-bold">
-                (Refine filters or click Load More below)
-              </span>
-            )}
+            <strong className="text-slate-900 font-mono font-bold">{data.count}</strong> matching actions
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full sm:w-auto">
@@ -485,7 +463,7 @@ function InterventionsContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/70 font-mono text-xs">
-              {filtered.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center font-sans">
                     <div className="flex flex-col items-center gap-2 max-w-sm mx-auto">
@@ -609,14 +587,27 @@ function InterventionsContent() {
           </table>
         </div>
 
-        {/* Load More Button if filtered exceeds limit */}
-        {filtered.length > displayLimit && (
-          <div className="pt-3 text-center border-t border-slate-200/80">
+        {/* Pagination Controls */}
+        {data.count > limit && (
+          <div className="flex justify-center items-center gap-4 pt-4 border-t border-slate-200/80">
             <button
-              onClick={() => setDisplayLimit((prev) => prev + 100)}
-              className="neu-btn px-5 py-2 text-slate-800 text-xs font-bold"
+              type="button"
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
             >
-              Load Next 100 Records (Showing {displayLimit} of {filtered.length})
+              Previous
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Page {page} of {Math.ceil(data.count / limit)}
+            </span>
+            <button
+              type="button"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= Math.ceil(data.count / limit)}
+              className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Next
             </button>
           </div>
         )}

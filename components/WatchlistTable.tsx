@@ -277,11 +277,10 @@ export default function WatchlistTable({
           <button
             type="button"
             onClick={handleAlertOnlyToggle}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-              alertOnly
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${alertOnly
                 ? "bg-rose-100 text-rose-800 border border-rose-300 font-bold shadow-inner"
                 : "neu-btn text-slate-700 hover:text-slate-900"
-            }`}
+              }`}
           >
             <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
             <span>Alerts Only (z ≥ 1.0)</span>
@@ -425,11 +424,10 @@ export default function WatchlistTable({
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`font-mono font-semibold ${
-                            item.strain_z_from_baseline >= 1.0
+                          className={`font-mono font-semibold ${item.strain_z_from_baseline >= 1.0
                               ? "text-rose-700 font-bold"
                               : "text-slate-700"
-                          }`}
+                            }`}
                         >
                           {item.strain_z_from_baseline >= 0
                             ? `+${item.strain_z_from_baseline.toFixed(2)}`
@@ -457,8 +455,8 @@ export default function WatchlistTable({
                           item.risk_probability >= 0.5
                             ? "text-rose-700 font-bold"
                             : item.risk_probability >= 0.22
-                            ? "text-amber-800 font-bold"
-                            : "text-slate-700"
+                              ? "text-amber-800 font-bold"
+                              : "text-slate-700"
                         }
                       >
                         {(item.risk_probability * 100).toFixed(1)}%

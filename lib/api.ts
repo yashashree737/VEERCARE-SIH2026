@@ -76,8 +76,8 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     let errorDetail = "";
     try {
       const err = await res.json();
-      errorDetail = typeof err.detail === "string" 
-        ? err.detail 
+      errorDetail = typeof err.detail === "string"
+        ? err.detail
         : err.detail?.detail || err.error || JSON.stringify(err);
     } catch {
       errorDetail = await res.text();
@@ -108,6 +108,7 @@ export const api = {
   getWatchlist: (params?: {
     month?: string;
     limit?: number;
+    page?: number;
     zone?: string;
     trend?: string;
     tier?: string;
@@ -116,11 +117,15 @@ export const api = {
     flagged_only?: boolean;
     alert_only?: boolean;
     min_risk?: number;
+    search?: string;
+    sort_key?: string;
+    sort_direction?: string;
   }): Promise<WatchlistResponse> => {
     if (USE_SEED_MODE) return seedApi.getWatchlist(params);
     const q = new URLSearchParams();
     if (params?.month) q.set("month", params.month);
     if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.page) q.set("page", String(params.page));
     if (params?.zone) q.set("zone", params.zone);
     if (params?.trend) q.set("trend", params.trend);
     if (params?.tier) q.set("tier", params.tier);
@@ -129,15 +134,41 @@ export const api = {
     if (params?.flagged_only) q.set("flagged_only", "true");
     if (params?.alert_only) q.set("alert_only", "true");
     if (params?.min_risk !== undefined) q.set("min_risk", String(params.min_risk));
+    if (params?.search) q.set("search", params.search);
+    if (params?.sort_key) q.set("sort_key", params.sort_key);
+    if (params?.sort_direction) q.set("sort_direction", params.sort_direction);
 
     const qs = q.toString();
     return fetchJson<WatchlistResponse>(`/api/watchlist${qs ? `?${qs}` : ""}`);
   },
 
-  getWall: (unit?: string): Promise<WallResponse> => {
-    if (USE_SEED_MODE) return seedApi.getWall(unit);
-    const qs = unit ? `?unit_id=${encodeURIComponent(unit)}` : "";
-    return fetchJson<WallResponse>(`/api/wall${qs}`);
+  getWall: (params?: {
+    unit?: string;
+    limit?: number;
+    page?: number;
+    search?: string;
+    sort_key?: string;
+    sort_direction?: string;
+    zone?: string;
+    trend?: string;
+    band?: string;
+    alert_only?: boolean;
+  }): Promise<WallResponse> => {
+    if (USE_SEED_MODE) return seedApi.getWall(params?.unit); // seed doesn't fully support all for wall, but it's ok
+    const q = new URLSearchParams();
+    if (params?.unit) q.set("unit_id", params.unit);
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.search) q.set("search", params.search);
+    if (params?.sort_key) q.set("sort_key", params.sort_key);
+    if (params?.sort_direction) q.set("sort_direction", params.sort_direction);
+    if (params?.zone) q.set("zone", params.zone);
+    if (params?.trend) q.set("trend", params.trend);
+    if (params?.band) q.set("band", params.band);
+    if (params?.alert_only) q.set("alert_only", "true");
+    
+    const qs = q.toString();
+    return fetchJson<WallResponse>(`/api/wall${qs ? `?${qs}` : ""}`);
   },
 
   getPersonnel: (id: string): Promise<PersonnelDetailResponse> => {
@@ -170,9 +201,27 @@ export const api = {
     return fetchJson<HistoryResponse>(`/api/personnel/${id}/history`);
   },
 
-  getInterventions: (): Promise<InterventionsResponse> => {
+  getInterventions: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+    outcome?: string;
+    sort_key?: string;
+    sort_direction?: string;
+  }): Promise<InterventionsResponse> => {
     if (USE_SEED_MODE) return seedApi.getInterventions();
-    return fetchJson<InterventionsResponse>("/api/interventions");
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.search) q.set("search", params.search);
+    if (params?.type) q.set("type", params.type);
+    if (params?.outcome) q.set("outcome", params.outcome);
+    if (params?.sort_key) q.set("sort_key", params.sort_key);
+    if (params?.sort_direction) q.set("sort_direction", params.sort_direction);
+    
+    const qs = q.toString();
+    return fetchJson<InterventionsResponse>(`/api/interventions${qs ? `?${qs}` : ""}`);
   },
 
   createIntervention: (req: CreateInterventionRequest): Promise<InterventionRecord> => {

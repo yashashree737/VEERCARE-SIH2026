@@ -11,27 +11,66 @@ import { ArrowUpDown, Lock, Clock } from "lucide-react";
 
 interface UnitWallProps {
   cards: WallCard[];
+  totalCount?: number;
+  sortKey?: string;
+  onSortChange?: (key: string) => void;
+  page?: number;
+  onPageChange?: (page: number) => void;
+  limit?: number;
 }
 
 type SortKey = "risk" | "z" | "duty";
 
-export default function UnitWall({ cards }: UnitWallProps) {
-  const [sortKey, setSortKey] = useState<SortKey>("risk");
+export default function UnitWall({
+  cards,
+  totalCount,
+  sortKey: controlledSortKey,
+  onSortChange,
+  page,
+  onPageChange,
+  limit = 10,
+}: UnitWallProps) {
+  const [localSortKey, setLocalSortKey] = useState<SortKey>("risk");
+  
+  const sortKey = (controlledSortKey as SortKey) || localSortKey;
+
+  const handleSortChange = (key: SortKey) => {
+    if (onSortChange) {
+      onSortChange(key);
+    } else {
+      setLocalSortKey(key);
+    }
+  };
 
   const sortedCards = useMemo(() => {
-    return [...cards].sort((a, b) => {
-      if (sortKey === "risk") {
-        return b.risk_probability - a.risk_probability;
-      }
-      if (sortKey === "z") {
-        return b.current_z - a.current_z;
-      }
-      if (sortKey === "duty") {
-        return b.duty_hours_current_month - a.duty_hours_current_month;
-      }
-      return 0;
-    });
-  }, [cards, sortKey]);
+    let result = cards;
+    
+    if (!onSortChange) {
+      result = [...cards].sort((a, b) => {
+        if (sortKey === "risk") {
+          return b.risk_probability - a.risk_probability;
+        }
+        if (sortKey === "z") {
+          return b.current_z - a.current_z;
+        }
+        if (sortKey === "duty") {
+          return b.duty_hours_current_month - a.duty_hours_current_month;
+        }
+        return 0;
+      });
+    }
+
+    // Fallback: If backend didn't paginate and returned all results, slice it locally
+    if (result.length > limit) {
+      const currentPage = page || 1;
+      const startIndex = (currentPage - 1) * limit;
+      result = result.slice(startIndex, startIndex + limit);
+    }
+
+    return result;
+  }, [cards, sortKey, onSortChange, limit, page]);
+
+  const displayCount = totalCount !== undefined ? totalCount : cards.length;
 
   return (
     <div className="neu-card p-6 space-y-4">
@@ -39,7 +78,7 @@ export default function UnitWall({ cards }: UnitWallProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-slate-800">
-            Cohort Grid ({cards.length} monitored)
+            Cohort Grid ({displayCount} monitored)
           </span>
           <span className="text-xs px-2.5 py-0.5 rounded-full neu-card-flat text-blue-700 font-semibold">
             12-Mo Sparklines
@@ -55,7 +94,7 @@ export default function UnitWall({ cards }: UnitWallProps) {
 
           <button
             type="button"
-            onClick={() => setSortKey("risk")}
+            onClick={() => handleSortChange("risk")}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
               sortKey === "risk"
                 ? "neu-btn-primary shadow"
@@ -67,7 +106,7 @@ export default function UnitWall({ cards }: UnitWallProps) {
 
           <button
             type="button"
-            onClick={() => setSortKey("z")}
+            onClick={() => handleSortChange("z")}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
               sortKey === "z"
                 ? "neu-btn-primary shadow"
@@ -79,7 +118,7 @@ export default function UnitWall({ cards }: UnitWallProps) {
 
           <button
             type="button"
-            onClick={() => setSortKey("duty")}
+            onClick={() => handleSortChange("duty")}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
               sortKey === "duty"
                 ? "neu-btn-primary shadow"
@@ -169,6 +208,30 @@ export default function UnitWall({ cards }: UnitWallProps) {
           );
         })}
       </div>
+      {/* Pagination Controls */}
+      {totalCount !== undefined && totalCount > limit && page !== undefined && onPageChange && (
+        <div className="flex justify-center items-center gap-4 pt-4 border-t border-slate-200/80">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page === 1}
+            className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-slate-600 font-medium">
+            Page {page} of {Math.ceil(totalCount / limit)}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= Math.ceil(totalCount / limit)}
+            className="neu-btn px-4 py-2 font-semibold text-slate-800 disabled:opacity-50 text-xs sm:text-sm"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
