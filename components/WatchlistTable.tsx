@@ -65,6 +65,12 @@ export default function WatchlistTable({
   const sortKey = controlledSortKey !== undefined ? controlledSortKey : localSortKey;
   const sortDirection = controlledSortDirection !== undefined ? controlledSortDirection : localSortDirection;
 
+  const [searchInput, setSearchInput] = useState(search || "");
+
+  React.useEffect(() => {
+    setSearchInput(search || "");
+  }, [search]);
+
   const handleSearchChange = (val: string) => {
     if (onSearchChange) onSearchChange(val);
     else setLocalSearch(val);
@@ -123,7 +129,7 @@ export default function WatchlistTable({
 
   const displayedItems = useMemo(() => {
     let res = items;
-    if (!onSearchChange && search) {
+    if (search) {
       const q = search.toLowerCase();
       res = res.filter(
         (i) => i.personnel_id.toLowerCase().includes(q) || i.rank.toLowerCase().includes(q)
@@ -201,16 +207,28 @@ export default function WatchlistTable({
         {/* Filter Controls */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           {/* Search ID or Rank */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search ID / Rank..."
-              aria-label="Search personnel by ID or rank"
-              className="w-full neu-inset rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500/40"
-            />
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearchChange(searchInput);
+                }}
+                placeholder="Search ID / Rank..."
+                aria-label="Search personnel by ID or rank"
+                className="w-full neu-inset rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSearchChange(searchInput)}
+              className="neu-btn-primary px-3 py-2 rounded-xl text-xs font-semibold shrink-0"
+            >
+              Apply
+            </button>
           </div>
 
           {/* Zone Filter */}

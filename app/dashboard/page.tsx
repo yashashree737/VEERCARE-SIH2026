@@ -339,6 +339,19 @@ function DashboardContent() {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Universal Dashboard Title */}
+      <div className="pt-2 pb-1">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          {user?.name}&apos;s Dashboard
+        </h1>
+        <p className="text-sm text-slate-600 mt-1">
+          {userRole === "admin" ? "System Administration & Evaluation" : 
+           isCommander ? `Commanding Officer, Unit ${activeUnit}` :
+           userRole === "welfare" ? "Welfare Officer Clinical Scope" :
+           "Personnel Secure Portal"}
+        </p>
+      </div>
+
       {/* Role Scoping Banner */}
       {userRole === "admin" ? (
         <div className="p-3.5 sm:p-4 neu-card bg-gradient-to-r from-amber-50/80 via-white/40 to-blue-50/80 border-amber-300/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-amber-900 shadow-md">

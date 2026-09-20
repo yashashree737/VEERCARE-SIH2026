@@ -331,6 +331,19 @@ function PersonnelDetailContent() {
 
   return (
     <div className="space-y-6 pb-20 relative">
+      {/* Universal Dashboard Title */}
+      <div className="pt-2 pb-1">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          {user?.name}&apos;s Dashboard
+        </h1>
+        <p className="text-sm text-slate-600 mt-1">
+          {user?.role === "admin" ? "System Administration & Evaluation" : 
+           user?.role === "commander" ? `Commanding Officer, Unit ${user?.unit_id || "U012"}` :
+           user?.role === "welfare" ? "Welfare Officer Clinical Scope" :
+           "Personnel Secure Portal"}
+        </p>
+      </div>
+
       {/* Top Breadcrumb */}
       <div className="flex items-center justify-between">
         {user?.role === "personnel" ? (
