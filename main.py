@@ -32,9 +32,11 @@ app = FastAPI(
 # is rejected by browsers per spec; keeping credentials off lets "*" work for LAN
 # demo machines without that footgun. Lock allow_origins to your frontend origin(s)
 # for production.
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[ALLOWED_ORIGIN],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,7 +60,7 @@ def verify_token(
 
 # Include Routers
 app.include_router(auth_router)  # Authentication route does not require API key token
-app.include_router(ui_bridge_router)  # UI Bridge routes
+app.include_router(ui_bridge_router, dependencies=[Depends(verify_token)])  # UI Bridge routes
 app.include_router(users_router, dependencies=[Depends(verify_token)])
 app.include_router(soldier_router, dependencies=[Depends(verify_token)])
 app.include_router(commander_router, dependencies=[Depends(verify_token)])
