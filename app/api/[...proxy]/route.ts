@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Fallback logic, but ideally BACKEND_API_BASE should be set. 
-// We use API_BASE which is server-side only so it's not exposed to the browser.
-const BACKEND_API_BASE = process.env.API_BASE || "http://127.0.0.1:8000";
-const API_KEY = process.env.API_KEY || "";
-
 async function handleProxy(req: NextRequest, { params }: { params: Promise<{ proxy: string[] }> }) {
+  // Read environment variables inside the function to ensure Vercel picks up runtime values
+  const BACKEND_API_BASE = process.env.API_BASE || "http://127.0.0.1:8000";
+  const API_KEY = process.env.API_KEY || "";
+
   const resolvedParams = await params;
   const pathParts = resolvedParams.proxy || [];
   
