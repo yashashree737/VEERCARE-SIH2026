@@ -25,20 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Read and validate session on mount
     const initAuth = async () => {
       try {
-        const savedToken = localStorage.getItem("veercare_token");
-        if (savedToken) {
-          setToken(savedToken);
-          // Validate with backend
-          const profile = await api.getMe();
-          setUser(profile);
-          localStorage.setItem("veercare_user", JSON.stringify(profile));
-        }
+        const profile = await api.getMe();
+        setUser(profile);
+        setToken("session-active"); // dummy token to keep isAuthenticated logic working
       } catch {
-        // Token invalid or expired
+        // No active session or token invalid
         setToken(null);
         setUser(null);
-        localStorage.removeItem("veercare_token");
-        localStorage.removeItem("veercare_user");
       } finally {
         setIsLoading(false);
       }
@@ -50,8 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const saveSession = (authData: LoginResponse) => {
     setToken(authData.token);
     setUser(authData.user);
-    localStorage.setItem("veercare_token", authData.token);
-    localStorage.setItem("veercare_user", JSON.stringify(authData.user));
   };
 
   const login = async (personnel_id: string, password: string): Promise<AuthUser> => {
@@ -83,8 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("veercare_token");
-    localStorage.removeItem("veercare_user");
     api.logout().catch(() => {});
   };
 
@@ -112,3 +101,4 @@ export function useAuth() {
   }
   return context;
 }
+

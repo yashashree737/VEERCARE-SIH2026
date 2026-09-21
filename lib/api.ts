@@ -1,7 +1,7 @@
 /**
  * VeerCare Frontend API Client.
- * Currently routed to use local `seedApi` (lib/seed.ts) so the frontend runs
- * 100% standalone and error-free on any machine without backend dependencies.
+ * Now configured to route through the Next.js API Proxy to hide backend URLs,
+ * API Keys, and authentication details from the browser.
  */
 
 import {
@@ -26,25 +26,11 @@ import {
 } from "./types";
 import { seedApi } from "./seed";
 
-// Toggle flag: false = Live Backend Mode (http://127.0.0.1:8000), true = Standalone Seed Mode
+// Toggle flag: false = Live Backend Mode, true = Standalone Seed Mode
 const USE_SEED_MODE = false;
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
-
-export function getAuthToken(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("veercare_token");
-  }
-  return null;
-}
-
-export function getAuthHeader(): Record<string, string> {
-  const token = getAuthToken();
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-}
+// API_BASE is now empty to target the local Next.js proxy
+const API_BASE = "";
 
 export class ApiError extends Error {
   status: number;
@@ -67,7 +53,6 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeader(),
       ...(options?.headers || {}),
     },
   });
@@ -84,8 +69,6 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     }
 
     if (res.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("veercare_token");
-      localStorage.removeItem("veercare_user");
       const currentPath = window.location.pathname + window.location.search;
       if (currentPath !== "/" && !currentPath.startsWith("/?")) {
         window.location.href = `/?next=${encodeURIComponent(currentPath)}`;
@@ -273,58 +256,20 @@ export const api = {
     if (USE_SEED_MODE) {
       return seedApi.login(personnel_id, password);
     }
-    const rawRes = await fetchJson<{
-      message: string;
-      user: {
-        id: number;
-        supabase_user_id?: string | null;
-        personnel_id: string;
-        first_name: string;
-        last_name?: string | null;
-        email: string;
-        role: string;
-        unit_id?: number | null;
-      };
-    }>("/auth/login", {
+    return fetchJson<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ personnel_id, password }),
     });
-
-    const userObj = rawRes.user;
-    let mappedRole: AuthUser["role"] = "admin";
-    if (userObj.role === "soldier") mappedRole = "personnel";
-    else if (userObj.role === "commander") mappedRole = "commander";
-    else if (userObj.role === "welfare_officer" || userObj.role === "welfare") mappedRole = "welfare";
-    else if (userObj.role === "hr_officer" || userObj.role === "admin") mappedRole = "admin";
-
-    const authUser: AuthUser = {
-      user_id: String(userObj.id),
-      name: `${userObj.first_name} ${userObj.last_name || ""}`.trim(),
-      role: mappedRole,
-      rank: userObj.role === "soldier" ? "Constable" : (userObj.role === "commander" ? "Commander" : "Officer"),
-      unit_id: userObj.unit_id ? String(userObj.unit_id) : "U012",
-      personnel_id: userObj.personnel_id,
-    };
-
-    return {
-      token: `token-user-${userObj.id}`,
-      user: authUser,
-    };
   },
 
   getMe: (): Promise<AuthUser> => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem("veercare_user") : null;
-    if (raw) {
-      try {
-        return Promise.resolve(JSON.parse(raw) as AuthUser);
-      } catch {
-        // fall through
-      }
-    }
-    return Promise.reject(new ApiError(401, "/api/auth/me", "No stored session"));
+    return fetchJson<AuthUser>("/api/auth/me");
   },
 
   logout: async (): Promise<{ message: string }> => {
-    return { message: "Logged out successfully" };
+    return fetchJson<{ message: string }>("/api/auth/logout", {
+      method: "POST",
+    });
   },
 };
+
