@@ -244,14 +244,29 @@ def get_watchlist(
     zone: Optional[str] = Query(None),
     trend: Optional[str] = Query(None),
     tier: Optional[str] = Query(None),
+    page: Optional[int] = Query(1),
+    search: Optional[str] = Query(None),
+    sort_key: Optional[str] = Query(None),
+    sort_direction: Optional[str] = Query("desc"),
     db: Session = Depends(get_db),
 ):
-    max_scan = max(limit or 50, 100)
+    # Fetch a large number of profiles to apply search, sort, and pagination over the dataset
+    max_scan = 10000
     profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=max_scan)
 
     results = []
     for prof in profiles:
         user = users.get(prof.user_id)
+        
+        p_id = _pid_str(prof, user)
+        rank = prof.rank or "Constable"
+        
+        # Apply Search filtering
+        if search:
+            s_lower = search.lower()
+            if s_lower not in p_id.lower() and s_lower not in rank.lower():
+                continue
+
         pred = preds.get(prof.id)
         seed = _seed(prof)
         strain = _strain_of(pred, seed)
@@ -277,9 +292,9 @@ def get_watchlist(
         z = round(z, 2) if z is not None else round((strain - 45) / 12.0, 2)
 
         results.append({
-            "personnel_id": _pid_str(prof, user),
+            "personnel_id": p_id,
             "monitoring_tier": "Daily Telemetry Cohort" if prof.device_consent_status == "Consented" else "Monthly HR Reporting",
-            "rank": prof.rank or "Constable",
+            "rank": rank,
             "deployment_zone": prof.deployment_zone or "Field Area",
             "strain_index": strain,
             "strain_band": s_band,
@@ -292,10 +307,30 @@ def get_watchlist(
             "record_restricted": prof.welfare_record_access == "Restricted",
         })
 
-    results.sort(key=lambda x: x["strain_index"], reverse=True)
-    if limit:
-        results = results[:limit]
-    return {"count": len(results), "results": results}
+    # Apply Sorting
+    if sort_key:
+        reverse_sort = sort_direction.lower() == "desc"
+        if sort_key == "risk":
+            results.sort(key=lambda x: x["risk_probability"], reverse=reverse_sort)
+        elif sort_key == "z":
+            results.sort(key=lambda x: x["strain_z_from_baseline"], reverse=reverse_sort)
+        elif sort_key == "strain":
+            results.sort(key=lambda x: x["strain_index"], reverse=reverse_sort)
+        elif sort_key == "id":
+            results.sort(key=lambda x: x["personnel_id"], reverse=reverse_sort)
+    else:
+        results.sort(key=lambda x: x["strain_index"], reverse=True)
+
+    total_count = len(results)
+
+    # Apply Pagination
+    limit_val = limit or 50
+    page_val = page or 1
+    start_idx = (page_val - 1) * limit_val
+    end_idx = start_idx + limit_val
+    results = results[start_idx:end_idx]
+    
+    return {"count": total_count, "results": results}
 
 
 @router.get("/wall")
