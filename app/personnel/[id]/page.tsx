@@ -53,6 +53,7 @@ import {
   ShieldCheck,
   Brain,
   ClipboardList,
+  ChevronDown,
 } from "lucide-react";
 
 type TabKey = "home" | "test" | "overview" | "drivers" | "duty" | "history" | "self-assessment" | "support";
@@ -355,7 +356,7 @@ function PersonnelDetailContent() {
       </div>
 
       {/* Sticky Compact Identity Bar at Top */}
-      <div className="sticky top-16 z-20 neu-card backdrop-blur-md p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="top-16 z-20 neu-card backdrop-blur-md p-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-lg font-mono font-extrabold text-slate-900 tracking-tight">
             {profile.personnel_id}
@@ -429,13 +430,56 @@ function PersonnelDetailContent() {
         </div>
       </div>
 
+      {/* Mobile / Tablet Dropdown Navigation (hidden on md+) */}
+      <div className="md:hidden">
+        <div className="relative">
+          <select
+            id="mobile-tab-select"
+            aria-label="Navigate sections"
+            value={activeTab}
+            onChange={(e) => changeTab(e.target.value as TabKey)}
+            className="w-full appearance-none neu-card px-4 py-3 pr-10 text-sm font-semibold text-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-400/50 cursor-pointer"
+          >
+            {user?.role === "personnel" ? (
+              <>
+                <option value="home">🏠 Home</option>
+                <option value="test">🧠 Periodic Tests</option>
+                <option value="self-assessment">💬 AI Scenario Chat</option>
+                <option value="duty">📅 Duty &amp; Rest Calendar</option>
+                <option value="support">📞 Support &amp; Helplines</option>
+                <option value="overview">📊 Service Stats &amp; Baseline</option>
+              </>
+            ) : user?.role === "commander" ? (
+              <>
+                <option value="duty">📅 Duty &amp; Calendar</option>
+                <option value="history">🕒 History Timeline</option>
+              </>
+            ) : user?.role === "admin" ? (
+              <>
+                <option value="duty">📅 Duty &amp; Calendar</option>
+              </>
+            ) : (
+              <>
+                <option value="overview">📊 Overview</option>
+                <option value="test">🧠 Periodic Tests</option>
+                <option value="drivers">🎚️ Risk Drivers</option>
+                <option value="duty">📅 Duty &amp; Telemetry</option>
+                <option value="history">🕒 History Timeline</option>
+                <option value="self-assessment">🤝 Self-Assessment &amp; Coping</option>
+              </>
+            )}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        </div>
+      </div>
+
       {/* Two-Column Sidebar + Content Layout */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
         {/* Left Sidebar Navigation */}
         <nav
           role="tablist"
           aria-label="Personnel Profile Navigation"
-          className="w-full md:w-60 md:shrink-0 md:sticky md:top-36 md:self-start neu-card p-3 space-y-1.5 z-10"
+          className="hidden md:block w-full md:w-60 md:shrink-0 md:sticky md:top-36 md:self-start neu-card p-3 space-y-1.5 z-10"
         >
           <div className="text-metadata font-bold text-slate-600 uppercase tracking-wider px-3 py-1.5 hidden md:block border-b border-slate-200/80 mb-2">
             Sections
@@ -451,8 +495,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-home"
                   onClick={() => changeTab("home")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between gap-2 ${activeTab === "home"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -471,8 +515,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-test"
                   onClick={() => changeTab("test")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between gap-2 ${activeTab === "test"
-                      ? "neu-btn-active text-amber-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-amber-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -491,8 +535,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-self-assessment"
                   onClick={() => changeTab("self-assessment")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "self-assessment"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <MessageSquare className="w-4 h-4 text-blue-500" />
@@ -506,8 +550,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-duty"
                   onClick={() => changeTab("duty")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Calendar className="w-4 h-4 text-indigo-500" />
@@ -521,8 +565,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-support"
                   onClick={() => changeTab("support")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "support"
-                      ? "neu-btn-active text-emerald-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-emerald-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <PhoneCall className="w-4 h-4 text-emerald-500" />
@@ -536,8 +580,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-overview"
                   onClick={() => changeTab("overview")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "overview"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Activity className="w-4 h-4 text-blue-600" />
@@ -554,8 +598,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-duty"
                   onClick={() => changeTab("duty")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Calendar className="w-4 h-4 text-indigo-500" />
@@ -569,8 +613,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-history"
                   onClick={() => changeTab("history")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "history"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <History className="w-4 h-4 text-slate-600" />
@@ -587,8 +631,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-duty"
                   onClick={() => changeTab("duty")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Calendar className="w-4 h-4 text-indigo-500" />
@@ -605,8 +649,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-overview"
                   onClick={() => changeTab("overview")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "overview"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Activity className="w-4 h-4 text-blue-600" />
@@ -620,8 +664,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-test"
                   onClick={() => changeTab("test")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "test"
-                      ? "neu-btn-active text-amber-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-amber-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Brain className="w-4 h-4 text-amber-500" />
@@ -635,8 +679,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-drivers"
                   onClick={() => changeTab("drivers")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "drivers"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Sliders className="w-4 h-4 text-slate-600" />
@@ -650,8 +694,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-duty"
                   onClick={() => changeTab("duty")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "duty"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <Calendar className="w-4 h-4 text-indigo-500" />
@@ -665,8 +709,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-history"
                   onClick={() => changeTab("history")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "history"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <History className="w-4 h-4 text-slate-600" />
@@ -680,8 +724,8 @@ function PersonnelDetailContent() {
                   aria-controls="panel-self-assessment"
                   onClick={() => changeTab("self-assessment")}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "self-assessment"
-                      ? "neu-btn-active text-blue-600"
-                      : "neu-btn text-slate-700 hover:text-slate-950"
+                    ? "neu-btn-active text-blue-600"
+                    : "neu-btn text-slate-700 hover:text-slate-950"
                     }`}
                 >
                   <HeartHandshake className="w-4 h-4 text-blue-600" />
