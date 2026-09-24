@@ -196,7 +196,7 @@ export default function SituationalAssessmentChat({
 
         {/* Input */}
         {!readOnly && (
-          <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-200/60">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2 pt-4 mt-4 border-t border-slate-200/60">
             <input
               type="text"
               value={input}
@@ -209,12 +209,12 @@ export default function SituationalAssessmentChat({
                 }
               }}
               placeholder="Type your reply…"
-              className="flex-1 p-3 neu-inset rounded-xl text-body-base text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+              className="w-full lg:flex-1 p-3 neu-inset rounded-xl text-body-base text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
             />
             <button
               onClick={() => send()}
               disabled={sending || !input.trim()}
-              className="neu-btn-primary px-5 py-3 text-body-base font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+              className="w-full lg:w-auto neu-btn-primary px-5 py-3 text-body-base font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 lg:shrink-0"
             >
               <Send className="w-4 h-4" />
               <span>Send</span>
