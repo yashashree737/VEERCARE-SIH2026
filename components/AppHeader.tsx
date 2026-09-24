@@ -42,7 +42,7 @@ export default function AppHeader() {
   useEffect(() => {
     // Register service worker for PWA
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").catch(() => { });
     }
 
     // Offline / Online listeners
@@ -171,9 +171,6 @@ export default function AppHeader() {
               <div>
                 <span className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
                   VeerCare
-                  <span className="text-xs font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded neu-inset text-blue-700">
-                    Secure
-                  </span>
                 </span>
                 <p className="text-xs text-slate-500 hidden sm:block">Personnel Welfare & Early Warning</p>
               </div>
@@ -188,11 +185,10 @@ export default function AppHeader() {
                     <Link
                       key={r.href}
                       href={r.href}
-                      className={`px-3 py-1.5 rounded-xl text-xs transition-all ${
-                        isActive
-                          ? "neu-btn-active font-bold text-blue-600"
-                          : "text-slate-600 hover:text-slate-900 hover:neu-card-flat font-medium"
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl text-xs transition-all ${isActive
+                        ? "neu-btn-active font-bold text-blue-600"
+                        : "text-slate-600 hover:text-slate-900 hover:neu-card-flat font-medium"
+                        }`}
                     >
                       {r.label}
                     </Link>
@@ -272,11 +268,10 @@ export default function AppHeader() {
                 <Link
                   key={r.href}
                   href={r.href}
-                  className={`block px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    isActive
-                      ? "neu-btn-active font-bold text-blue-600"
-                      : "text-slate-600 hover:text-slate-900 neu-btn"
-                  }`}
+                  className={`block px-3 py-2 rounded-xl text-xs font-medium transition-all ${isActive
+                    ? "neu-btn-active font-bold text-blue-600"
+                    : "text-slate-600 hover:text-slate-900 neu-btn"
+                    }`}
                 >
                   {r.label}
                 </Link>
