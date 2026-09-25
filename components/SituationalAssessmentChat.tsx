@@ -10,7 +10,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, User, Send, ShieldCheck, RefreshCw, BrainCircuit, RotateCcw } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { Bot, User, Send, ShieldCheck, RefreshCw, BrainCircuit, RotateCcw, Lock } from "lucide-react";
 
 interface SituationalAssessmentChatProps {
   personnelId: string;
@@ -41,6 +42,7 @@ export default function SituationalAssessmentChat({
   rank,
   readOnly = false,
 }: SituationalAssessmentChatProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -106,6 +108,20 @@ export default function SituationalAssessmentChat({
       .catch(() => setMessages([{ id: `ai-${Date.now()}`, sender: "ai", text: FALLBACK }]))
       .finally(() => setSending(false));
   };
+
+  if (user && user.role !== "personnel") {
+    return (
+      <div className="neu-card p-6 sm:p-8 space-y-4 text-center">
+        <div className="w-12 h-12 rounded-2xl neu-inset flex items-center justify-center text-rose-600 mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">Confidential Personnel Feature</h3>
+        <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+          The Veer AI Companion and Scenario Chat is strictly confidential and reserved exclusively for logged-in Force Personnel. Commanders, Welfare Officers, and HR Administrators cannot view or access this companion.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="neu-card p-6 sm:p-7 space-y-5">

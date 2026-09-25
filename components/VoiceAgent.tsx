@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Mic, Bot, User, Volume2, ShieldCheck, RefreshCw, BrainCircuit, LifeBuoy } from "lucide-react";
 
@@ -43,6 +44,7 @@ function getRecognitionCtor(): any {
 
 export default function VoiceAgent() {
     const { user, isAuthenticated } = useAuth();
+    const pathname = usePathname();
 
     const [open, setOpen] = useState(false);
     const [supported, setSupported] = useState(true);
@@ -201,7 +203,8 @@ export default function VoiceAgent() {
 
     const toggleMic = () => (listening ? stopListening() : startListening());
 
-    if (!isAuthenticated || !user) return null;
+    const isPersonnel = user?.role?.toLowerCase() === "personnel";
+    if (!isAuthenticated || !user || !isPersonnel || pathname === "/") return null;
 
     const statusLabel = listening
         ? "Listening… tap to stop"
