@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { landingRoute } from "@/lib/nav";
@@ -29,6 +29,33 @@ function RoleAuthenticationPortalContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Backend wake-up ping (Render cold-start) ──────────────────────────────
+  // Fires once when the user first lands on "/". Completely fire-and-forget:
+  // never sets state, never re-renders, never throws to the user.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/health", { cache: "no-store" });
+        const json = await res.json();
+        if (json.ok) {
+          console.log(
+            `%c[VeerCare] Backend health OK — HTTP ${json.status}`,
+            "color: #22c55e; font-weight: bold;",
+            json.data ?? ""
+          );
+        } else {
+          console.warn(
+            `[VeerCare] Backend health check returned a non-OK status.`,
+            json
+          );
+        }
+      } catch (err) {
+        console.warn("[VeerCare] Backend health ping failed (network error):", err);
+      }
+    })();
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const nextUrl = searchParams.get("next");
 
