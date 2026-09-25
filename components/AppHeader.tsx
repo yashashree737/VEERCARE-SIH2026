@@ -183,11 +183,10 @@ export default function AppHeader() {
                     <Link
                       key={r.href}
                       href={r.href}
-                      className={`px-3 py-1.5 rounded-xl text-xs transition-all ${
-                        isActive
+                      className={`px-3 py-1.5 rounded-xl text-xs transition-all ${isActive
                           ? "neu-btn-active font-bold text-blue-600"
                           : "text-slate-600 hover:text-slate-900 hover:neu-card-flat font-medium"
-                      }`}
+                        }`}
                     >
                       {r.label}
                     </Link>
@@ -274,11 +273,10 @@ export default function AppHeader() {
                       <Link
                         key={r.href}
                         href={r.href}
-                        className={`block px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                          isActive
+                        className={`block px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${isActive
                             ? "neu-btn-active font-bold text-blue-600"
                             : "text-slate-700 hover:text-slate-950 neu-btn"
-                        }`}
+                          }`}
                       >
                         {r.label}
                       </Link>
@@ -301,10 +299,10 @@ export default function AppHeader() {
                   </span>
                 )}
               </div>
-              
+
               <div className="flex items-center justify-between gap-2 bg-white/40 p-2.5 rounded-xl border border-white/60 shadow-sm">
                 {getRoleBadge()}
-                
+
                 {isAuthenticated ? (
                   <div className="flex items-center gap-1.5">
                     <Link

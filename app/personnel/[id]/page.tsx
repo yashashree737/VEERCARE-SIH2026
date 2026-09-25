@@ -85,7 +85,7 @@ function PersonnelDetailContent() {
         ? ["duty", "history"]
         : userRole === "admin"
           ? ["duty"]
-          : ["overview", "test", "drivers", "duty", "history", "self-assessment"];
+          : ["overview", "test", "drivers", "duty", "history"];
 
   const initialTab: TabKey =
     tabParam && validTabs.includes(tabParam)
@@ -465,7 +465,6 @@ function PersonnelDetailContent() {
                 <option value="drivers">🎚️ Risk Drivers</option>
                 <option value="duty">📅 Duty &amp; Telemetry</option>
                 <option value="history">🕒 History Timeline</option>
-                <option value="self-assessment">🤝 Self-Assessment &amp; Coping</option>
               </>
             )}
           </select>
@@ -715,21 +714,6 @@ function PersonnelDetailContent() {
                 >
                   <History className="w-4 h-4 text-slate-600" />
                   <span>History Timeline</span>
-                </button>
-
-                <button
-                  role="tab"
-                  id="tab-self-assessment"
-                  aria-selected={activeTab === "self-assessment"}
-                  aria-controls="panel-self-assessment"
-                  onClick={() => changeTab("self-assessment")}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "self-assessment"
-                    ? "neu-btn-active text-blue-600"
-                    : "neu-btn text-slate-700 hover:text-slate-950"
-                    }`}
-                >
-                  <HeartHandshake className="w-4 h-4 text-blue-600" />
-                  <span>Self-Assessment & Coping</span>
                 </button>
               </>
             )}
@@ -991,13 +975,12 @@ function PersonnelDetailContent() {
             </div>
           )}
 
-          {/* 5. SELF-ASSESSMENT TAB */}
-          {activeTab === "self-assessment" && (
+          {/* 5. SELF-ASSESSMENT TAB (PERSONNEL EXCLUSIVE) */}
+          {activeTab === "self-assessment" && user?.role === "personnel" && (
             <div id="panel-self-assessment" role="tabpanel" aria-labelledby="tab-self-assessment" className="space-y-6">
               <SituationalAssessmentChat
                 personnelId={id}
                 rank={profile.rank}
-                readOnly={user?.role === "commander" && user?.personnel_id !== id}
               />
             </div>
           )}
