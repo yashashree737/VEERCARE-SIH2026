@@ -135,6 +135,7 @@ export const api = {
     zone?: string;
     trend?: string;
     band?: string;
+    min_risk?: number;
     alert_only?: boolean;
   }): Promise<WallResponse> => {
     if (USE_SEED_MODE) return seedApi.getWall(params?.unit); // seed doesn't fully support all for wall, but it's ok
@@ -148,6 +149,7 @@ export const api = {
     if (params?.zone) q.set("zone", params.zone);
     if (params?.trend) q.set("trend", params.trend);
     if (params?.band) q.set("band", params.band);
+    if (params?.min_risk !== undefined) q.set("min_risk", String(params.min_risk));
     if (params?.alert_only) q.set("alert_only", "true");
     
     const qs = q.toString();

@@ -216,7 +216,7 @@ export default function AppHeader() {
                 className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-xl neu-btn-primary"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Install PWA</span>
+                <span>Install App</span>
               </button>
             )}
 
@@ -335,7 +335,7 @@ export default function AppHeader() {
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl neu-btn-primary"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Install PWA Web App</span>
+                  <span>Install the App</span>
                 </button>
               )}
             </div>

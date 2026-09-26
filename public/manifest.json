@@ -1,7 +1,7 @@
 {
   "name": "VeerCare — Personnel Stress & Welfare Monitoring System",
   "short_name": "VeerCare",
-  "description": "AI-Powered Force Personnel Stress & Welfare Monitoring System",
+  "description": "AI-Powered Force Personnel Stress & Welfare Monitoring System for Uniformed Forces",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090d16",
@@ -9,10 +9,16 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

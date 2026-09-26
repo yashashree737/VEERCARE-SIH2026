@@ -17,6 +17,7 @@ interface UnitWallProps {
   page?: number;
   onPageChange?: (page: number) => void;
   limit?: number;
+  isLoading?: boolean;
 }
 
 type SortKey = "risk" | "z" | "duty";
@@ -29,6 +30,7 @@ export default function UnitWall({
   page,
   onPageChange,
   limit = 10,
+  isLoading = false,
 }: UnitWallProps) {
   const [localSortKey, setLocalSortKey] = useState<SortKey>("risk");
   
@@ -42,33 +44,20 @@ export default function UnitWall({
     }
   };
 
+  // Backend now handles pagination — cards already contains only the current page.
+  // Local sort is only applied when no external sort handler is provided (uncontrolled mode).
   const sortedCards = useMemo(() => {
-    let result = cards;
-    
-    if (!onSortChange) {
-      result = [...cards].sort((a, b) => {
-        if (sortKey === "risk") {
-          return b.risk_probability - a.risk_probability;
-        }
-        if (sortKey === "z") {
-          return b.current_z - a.current_z;
-        }
-        if (sortKey === "duty") {
-          return b.duty_hours_current_month - a.duty_hours_current_month;
-        }
-        return 0;
-      });
+    if (onSortChange) {
+      // Controlled: parent drives sort via API; render as-is.
+      return cards;
     }
-
-    // Fallback: If backend didn't paginate and returned all results, slice it locally
-    if (result.length > limit) {
-      const currentPage = page || 1;
-      const startIndex = (currentPage - 1) * limit;
-      result = result.slice(startIndex, startIndex + limit);
-    }
-
-    return result;
-  }, [cards, sortKey, onSortChange, limit, page]);
+    return [...cards].sort((a, b) => {
+      if (sortKey === "risk") return b.risk_probability - a.risk_probability;
+      if (sortKey === "z") return b.current_z - a.current_z;
+      if (sortKey === "duty") return b.duty_hours_current_month - a.duty_hours_current_month;
+      return 0;
+    });
+  }, [cards, sortKey, onSortChange]);
 
   const displayCount = totalCount !== undefined ? totalCount : cards.length;
 
@@ -131,7 +120,15 @@ export default function UnitWall({
       </div>
 
       {/* Grid of Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5">
+      <div className="relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-xl">
+            <div className="flex items-center gap-2 text-xs font-medium text-blue-700 neu-card px-4 py-2 rounded-xl shadow-lg">
+              <span>Updating cohort grid...</span>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5">
         {sortedCards.map((card) => {
           const bandHex = STRAIN_BAND_COLOR[card.current_strain_band]?.hex || "#3b82f6";
           const isAlert = card.baseline_alert_flag === 1;
@@ -207,6 +204,7 @@ export default function UnitWall({
             </Link>
           );
         })}
+        </div>
       </div>
       {/* Pagination Controls */}
       {totalCount !== undefined && totalCount > limit && page !== undefined && onPageChange && (

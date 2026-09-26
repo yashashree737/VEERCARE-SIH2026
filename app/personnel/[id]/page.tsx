@@ -51,9 +51,9 @@ import {
   Heart,
   Sparkles,
   ShieldCheck,
-  Brain,
   ClipboardList,
   ChevronDown,
+  Brain,
 } from "lucide-react";
 
 type TabKey = "home" | "test" | "overview" | "drivers" | "duty" | "history" | "self-assessment" | "support";
@@ -103,6 +103,7 @@ function PersonnelDetailContent() {
   const [justLogged, setJustLogged] = useState(false);
 
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const logButtonRef = useRef<HTMLButtonElement | null>(null);
   const selectRef = useRef<HTMLSelectElement | null>(null);
 
@@ -429,44 +430,85 @@ function PersonnelDetailContent() {
 
       {/* Mobile / Tablet Dropdown Navigation (hidden on md+) */}
       <div className="md:hidden">
-        <div className="relative">
-          <select
-            id="mobile-tab-select"
-            aria-label="Navigate sections"
-            value={activeTab}
-            onChange={(e) => changeTab(e.target.value as TabKey)}
-            className="w-full appearance-none neu-card px-4 py-3 pr-10 text-sm font-semibold text-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-400/50 cursor-pointer"
-          >
-            {user?.role === "personnel" ? (
-              <>
-                <option value="home">🏠 Home</option>
-                <option value="test">🧠 Periodic Tests</option>
-                <option value="self-assessment">💬 AI Scenario Chat</option>
-                <option value="duty">📅 Duty &amp; Rest Calendar</option>
-                <option value="support">📞 Support &amp; Helplines</option>
-                <option value="overview">📊 Service Stats &amp; Baseline</option>
-              </>
-            ) : user?.role === "commander" ? (
-              <>
-                <option value="duty">📅 Duty &amp; Calendar</option>
-                <option value="history">🕒 History Timeline</option>
-              </>
-            ) : user?.role === "admin" ? (
-              <>
-                <option value="duty">📅 Duty &amp; Calendar</option>
-              </>
-            ) : (
-              <>
-                <option value="overview">📊 Overview</option>
-                <option value="test">🧠 Periodic Tests</option>
-                <option value="drivers">🎚️ Risk Drivers</option>
-                <option value="duty">📅 Duty &amp; Telemetry</option>
-                <option value="history">🕒 History Timeline</option>
-              </>
-            )}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        </div>
+        {(() => {
+          // Tab definitions per role — mirrors desktop sidebar exactly
+          const tabsByRole: Record<string, { value: TabKey; label: string; icon: React.ReactNode }[]> = {
+            personnel: [
+              { value: "home",            label: "Home",                  icon: <Home className="w-4 h-4 text-blue-600" /> },
+              { value: "test",            label: "Periodic Tests",        icon: <Brain className="w-4 h-4 text-amber-500" /> },
+              { value: "self-assessment", label: "AI Scenario Chat",      icon: <MessageSquare className="w-4 h-4 text-blue-500" /> },
+              { value: "duty",            label: "Duty & Rest Calendar",  icon: <Calendar className="w-4 h-4 text-indigo-500" /> },
+              { value: "support",         label: "Support & Helplines",   icon: <PhoneCall className="w-4 h-4 text-emerald-500" /> },
+              { value: "overview",        label: "Service Stats & Baseline", icon: <Activity className="w-4 h-4 text-blue-600" /> },
+            ],
+            commander: [
+              { value: "duty",    label: "Duty & Calendar",   icon: <Calendar className="w-4 h-4 text-indigo-500" /> },
+              { value: "history", label: "History Timeline",  icon: <History className="w-4 h-4 text-slate-600" /> },
+            ],
+            admin: [
+              { value: "duty", label: "Duty & Calendar", icon: <Calendar className="w-4 h-4 text-indigo-500" /> },
+            ],
+          };
+          const defaultTabs: { value: TabKey; label: string; icon: React.ReactNode }[] = [
+            { value: "overview", label: "Overview",         icon: <Activity className="w-4 h-4 text-blue-600" /> },
+            { value: "test",     label: "Periodic Tests",   icon: <Brain className="w-4 h-4 text-amber-500" /> },
+            { value: "drivers",  label: "Risk Drivers",     icon: <Sliders className="w-4 h-4 text-slate-600" /> },
+            { value: "duty",     label: "Duty & Telemetry", icon: <Calendar className="w-4 h-4 text-indigo-500" /> },
+            { value: "history",  label: "History Timeline", icon: <History className="w-4 h-4 text-slate-600" /> },
+          ];
+          const tabs = user?.role ? (tabsByRole[user.role] ?? defaultTabs) : defaultTabs;
+          const active = tabs.find((t) => t.value === activeTab) ?? tabs[0];
+
+          return (
+            <div className="relative">
+              <button
+                type="button"
+                id="mobile-tab-trigger"
+                aria-haspopup="listbox"
+                aria-expanded={mobileMenuOpen}
+                onClick={() => setMobileMenuOpen((o) => !o)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.parentElement?.contains(e.relatedTarget)) {
+                    setMobileMenuOpen(false);
+                  }
+                }}
+                className="w-full neu-card px-4 py-3 pr-10 text-sm font-semibold text-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-400/50 cursor-pointer flex items-center gap-2.5 text-left"
+              >
+                {active?.icon}
+                <span className="flex-1">{active?.label}</span>
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${mobileMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {mobileMenuOpen && (
+                <ul
+                  role="listbox"
+                  aria-label="Navigate sections"
+                  className="absolute z-30 mt-2 w-full neu-card rounded-2xl py-1.5 shadow-xl overflow-hidden"
+                >
+                  {tabs.map((tab) => (
+                    <li key={tab.value} role="option" aria-selected={activeTab === tab.value}>
+                      <button
+                        type="button"
+                        onMouseDown={() => {
+                          changeTab(tab.value);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                          activeTab === tab.value
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tab.icon}
+                        <span>{tab.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Two-Column Sidebar + Content Layout */}

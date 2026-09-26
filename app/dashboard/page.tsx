@@ -92,22 +92,30 @@ function DashboardContent() {
 
   const handleZoneChange = (zone: string) => {
     setSelectedZone(zone);
-    updateUrlParams({ zone });
+    setPage(1);
+    setWallPage(1);
+    updateUrlParams({ zone, page: "1", wallPage: "1" });
   };
 
   const handleBandChange = (band: string) => {
     setSelectedBand(band);
-    updateUrlParams({ band });
+    setPage(1);
+    setWallPage(1);
+    updateUrlParams({ band, page: "1", wallPage: "1" });
   };
 
   const handleTrendChange = (trend: string) => {
     setSelectedTrend(trend);
-    updateUrlParams({ trend });
+    setPage(1);
+    setWallPage(1);
+    updateUrlParams({ trend, page: "1", wallPage: "1" });
   };
 
   const handleAlertOnlyChange = (alert: boolean) => {
     setAlertOnly(alert);
-    updateUrlParams({ alert: alert ? "true" : null });
+    setPage(1);
+    setWallPage(1);
+    updateUrlParams({ alert: alert ? "true" : null, page: "1", wallPage: "1" });
   };
 
   const handleSearchChange = (q: string) => {
@@ -621,6 +629,7 @@ function DashboardContent() {
           page={wallPage}
           onPageChange={handleWallPageChange}
           limit={limit}
+          isLoading={isRefreshing}
         />
       </section>
 
