@@ -350,9 +350,6 @@ function PersonnelDetailContent() {
           </Link>
         )}
 
-        <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-xl neu-card-flat text-slate-700">
-          Viewing as: <strong className="text-slate-900">{user?.role || "Officer"}</strong>
-        </span>
       </div>
 
       {/* Sticky Compact Identity Bar at Top */}

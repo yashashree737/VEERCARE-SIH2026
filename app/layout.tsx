@@ -15,7 +15,7 @@ const origin = process.env.DOMAIN || "https://veercare.vercel.app";
 
 export const metadata: Metadata = {
   title: "VeerCare — Personnel Stress & Welfare Monitoring System",
-  description: "AI-Powered Early Warning & Welfare Triage for Force Personnel",
+  description: "AI-Based Predictive Personnel Stress and Welfare Monitoring System for Uniformed Forces",
   keywords: [
     "VeerCare",
     "Personnel Stress Monitoring",
@@ -31,6 +31,9 @@ export const metadata: Metadata = {
     { name: "Yashashree Dalvi" },
     { name: "Mohana Rupa" },
   ],
+  verification: {
+    google: "1Z3acQvbffaTY47Awf2RoQz2JW3zvbUYPEXvyoA868I",
+  },
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
@@ -38,7 +41,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "VeerCare — Personnel Stress & Welfare Monitoring System",
-    description: "AI-Powered Early Warning & Welfare Triage for Force Personnel",
+    description: "AI-Based Predictive Personnel Stress and Welfare Monitoring System for Uniformed Forces",
     url: origin,
     siteName: "VeerCare",
     images: [
@@ -53,9 +56,9 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "VeerCare — Personnel Stress & Welfare Monitoring System",
-    description: "AI-Powered Early Warning & Welfare Triage for Force Personnel",
+    description: "AI-Based Predictive Personnel Stress and Welfare Monitoring System for Uniformed Forces",
     images: ["/logo.jpeg"],
   },
   robots: {
