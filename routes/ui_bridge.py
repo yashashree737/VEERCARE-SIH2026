@@ -334,8 +334,24 @@ def get_watchlist(
 
 
 @router.get("/wall")
-def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=100)
+def get_wall(
+    unit: Optional[str] = Query(None),
+    band: Optional[str] = Query(None),
+    min_risk: Optional[float] = Query(None),
+    trend: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    sort_key: Optional[str] = Query(None),
+    sort_direction: Optional[str] = Query("desc"),
+    # Pagination (optional — omit both to get legacy behaviour)
+    page: Optional[int] = Query(None),
+    limit: Optional[int] = Query(None),
+    # Legacy hard-cap kept for backwards compatibility
+    max_profiles: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    # Scan a large pool so filters/sorting operate on full data
+    scan_limit = max_profiles or 10000
+    profiles, users, units_cache, preds = _get_bulk_caches(db, max_profiles=scan_limit)
 
     cards = []
     for prof in profiles:
@@ -347,8 +363,28 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
         unit_obj = units_cache.get(prof.unit_id)
         unit_name = unit_obj.unit_name if unit_obj else (prof.deployment_zone or "101 Battalion CRPF")
 
+        # --- Filters ---
         if unit and unit not in ("All", "", None) and unit_name != unit:
             continue
+
+        s_band = _strain_band(strain)
+        if band and s_band != band:
+            continue
+
+        prob = _risk_prob(pred, strain)
+        if min_risk is not None and prob < min_risk:
+            continue
+
+        tf = _trend_flag(pred)
+        if trend and tf != trend:
+            continue
+
+        p_id = _pid_str(prof, user)
+        rank = prof.rank or "Constable"
+        if search:
+            s_lower = search.lower()
+            if s_lower not in p_id.lower() and s_lower not in rank.lower():
+                continue
 
         base_mean = round(getattr(pred, "baseline_strain_mean", None) or max(30.0, strain - 8), 1) if pred else max(30.0, strain - 8)
         base_sd = round(getattr(pred, "baseline_strain_sd", None) or 6.5, 1) if pred else 6.5
@@ -362,18 +398,17 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
                 "baseline_alert_flag": 1 if val >= 60 else 0,
             })
         series[-1]["strain_index"] = strain
-        series[-1]["strain_band"] = _strain_band(strain)
+        series[-1]["strain_band"] = s_band
 
-        prob = _risk_prob(pred, strain)
         cards.append({
-            "personnel_id": _pid_str(prof, user),
-            "rank": prof.rank or "Constable",
+            "personnel_id": p_id,
+            "rank": rank,
             "record_restricted": prof.welfare_record_access == "Restricted",
-            "current_strain_band": _strain_band(strain),
+            "current_strain_band": s_band,
             "current_strain_index": strain,
             "current_z": round((strain - base_mean) / max(base_sd, 1e-6), 2),
             "baseline_alert_flag": 1 if strain >= 60 else 0,
-            "trend_flag": _trend_flag(pred),
+            "trend_flag": tf,
             "risk_probability": prob,
             "duty_hours_current_month": round(getattr(pred, "baseline_duty_hours", None) or 220.0, 1) if pred else 220.0,
             "personal_baseline_mean": base_mean,
@@ -381,8 +416,33 @@ def get_wall(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
             "series": series,
         })
 
-    cards.sort(key=lambda x: x["current_strain_index"], reverse=True)
-    return {"count": len(cards), "results": cards}
+    # --- Sorting (applied to full filtered set) ---
+    if sort_key:
+        reverse_sort = (sort_direction or "desc").lower() == "desc"
+        if sort_key == "risk":
+            cards.sort(key=lambda x: x["risk_probability"], reverse=reverse_sort)
+        elif sort_key == "z":
+            cards.sort(key=lambda x: x["current_z"], reverse=reverse_sort)
+        elif sort_key == "strain":
+            cards.sort(key=lambda x: x["current_strain_index"], reverse=reverse_sort)
+        elif sort_key == "id":
+            cards.sort(key=lambda x: x["personnel_id"], reverse=reverse_sort)
+    else:
+        cards.sort(key=lambda x: x["current_strain_index"], reverse=True)
+
+    total_count = len(cards)
+
+    # --- Pagination (only when page or limit is supplied) ---
+    if page is not None or limit is not None:
+        limit_val = limit or 50
+        page_val = page or 1
+        start_idx = (page_val - 1) * limit_val
+        cards = cards[start_idx: start_idx + limit_val]
+    elif max_profiles is not None:
+        # Legacy: caller passed max_profiles — respect it as a simple slice
+        cards = cards[:max_profiles]
+
+    return {"count": total_count, "results": cards}
 
 
 # --------------------------------------------------------------------------- #
