@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -163,9 +164,7 @@ export default function AppHeader() {
             </button>
 
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md text-white group-hover:scale-105 transition-transform">
-                <Activity className="w-5 h-5" />
-              </div>
+              <Image src="/logo.jpeg" alt="VeerCare Logo" className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md text-white group-hover:scale-105 transition-transform" width={36} height={36} />
               <div>
                 <span className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
                   VeerCare
@@ -184,8 +183,8 @@ export default function AppHeader() {
                       key={r.href}
                       href={r.href}
                       className={`px-3 py-1.5 rounded-xl text-xs transition-all ${isActive
-                          ? "neu-btn-active font-bold text-blue-600"
-                          : "text-slate-600 hover:text-slate-900 hover:neu-card-flat font-medium"
+                        ? "neu-btn-active font-bold text-blue-600"
+                        : "text-slate-600 hover:text-slate-900 hover:neu-card-flat font-medium"
                         }`}
                     >
                       {r.label}
@@ -274,8 +273,8 @@ export default function AppHeader() {
                         key={r.href}
                         href={r.href}
                         className={`block px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${isActive
-                            ? "neu-btn-active font-bold text-blue-600"
-                            : "text-slate-700 hover:text-slate-950 neu-btn"
+                          ? "neu-btn-active font-bold text-blue-600"
+                          : "text-slate-700 hover:text-slate-950 neu-btn"
                           }`}
                       >
                         {r.label}
