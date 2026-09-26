@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "VeerCare — Personnel Stress & Welfare Monitoring System",
     description: "AI-Based Predictive Personnel Stress and Welfare Monitoring System for Uniformed Forces",
     images: ["/logo.jpeg"],
