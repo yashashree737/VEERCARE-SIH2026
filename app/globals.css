@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f0f3f8;
+  --foreground: #1e293b;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Neumorphism (Soft UI) Base Utilities */
+.neu-surface {
+  background-color: #f0f3f8;
+}
+
+/* Primary Neumorphic Raised Card (border-radius: 16px, dual box-shadow) */
+.neu-card {
+  background: #f0f3f8;
+  border-radius: 16px;
+  box-shadow: -5px -5px 15px #ffffff, 5px 5px 15px rgba(163, 177, 198, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Sub-card / flat raised element (border-radius: 14px) */
+.neu-card-flat {
+  background: #f0f3f8;
+  border-radius: 14px;
+  box-shadow: -3px -3px 10px #ffffff, 3px 3px 10px rgba(163, 177, 198, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Inset well for inputs, textareas, search bars, and pressed states (border-radius: 12px) */
+.neu-inset {
+  background: #ebf0f7;
+  border-radius: 12px;
+  box-shadow: inset 3px 3px 7px rgba(163, 177, 198, 0.55), inset -3px -3px 7px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+}
+
+/* Tactile Neumorphic Button (border-radius: 14px) */
+.neu-btn {
+  background: #f0f3f8;
+  border-radius: 14px;
+  box-shadow: -4px -4px 12px #ffffff, 4px 4px 12px rgba(163, 177, 198, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  color: #334155;
+  transition: all 0.15s ease-in-out;
+}
+
+.neu-btn:hover {
+  box-shadow: -6px -6px 16px #ffffff, 6px 6px 16px rgba(163, 177, 198, 0.75);
+  color: #0f172a;
+}
+
+.neu-btn:active,
+.neu-btn-active {
+  background: #e6edf5 !important;
+  box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.6), inset -3px -3px 6px #ffffff !important;
+  color: #2563eb !important;
+}
+
+/* Primary Vibrant Neumorphic Action Button */
+.neu-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff !important;
+  border-radius: 14px;
+  box-shadow: -3px -3px 10px #ffffff, 4px 4px 14px rgba(37, 99, 235, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.15s ease-in-out;
+}
+
+.neu-btn-primary:hover {
+  box-shadow: -4px -4px 12px #ffffff, 5px 5px 18px rgba(37, 99, 235, 0.55);
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+}
+
+.neu-btn-primary:active {
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* High-contrast focus-visible ring for light neumorphic canvas */
+:focus-visible {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px !important;
+  border-radius: 6px;
+}
+
+/* Reduced motion compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
