@@ -128,7 +128,7 @@ uvicorn main:app --reload
 
 ## 👥 Stakeholder Roles
 
-*   **Personnel:** Personal wellbeing, assessments, trends, VEER, and support resources.
+*   **Personnel Officer:** Personal wellbeing, assessments, trends, VEER, and support resources.
 *   **Welfare Officer:** Authorized individual welfare review and intervention tracking.
 *   **Commander:** Aggregate unit-level wellbeing, workload, and operational trends.
 *   **HR/Admin:** Workforce-level trends and organizational insights.
@@ -152,6 +152,7 @@ uvicorn main:app --reload
 *   Chirag Mandhane
 *   Mohana Rupa Bandaru
 *   Yashashree Dalvi
+*   Deep Patil
 
 ---
 
