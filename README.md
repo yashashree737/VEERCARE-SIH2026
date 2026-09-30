@@ -114,6 +114,11 @@ uvicorn main:app --reload
 ```
 
 ---
+### 🏗️ Project Architecture
+
+[![Architecture diagram of yashashree737/veercare-sih2026](https://gitdiagram.com/yashashree737/veercare-sih2026/diagram.png)](https://gitdiagram.com/yashashree737/veercare-sih2026?utm_source=readme&utm_medium=picture)
+
+---
 
 ## 🔐 Privacy & Responsible AI
 
